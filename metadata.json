@@ -1,0 +1,8 @@
+{
+  "name": "Gestão de Ocorrências - Trimais Places",
+  "description": "An application for mall staff to report and manage incidents like leaks, damage, and cleaning issues, routing them to the appropriate departments and enabling team collaboration.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera"
+  ]
+}
