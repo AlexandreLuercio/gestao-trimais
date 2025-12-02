@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
   <head>
@@ -7,15 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Gestão de Tarefas - Trimais Places</title>
     
-    <!-- PWA Manifest REMOVED to force Shortcut Mode -->
-    <!-- <link rel="manifest" href="./manifest.json" /> -->
     <meta name="theme-color" content="#003366">
-
-    <!-- iOS Support - Icons Only, No Capable Tags to prevent UI hiding -->
     <link rel="apple-touch-icon" href="./icon-192.png">
-    
-    <!-- Android Support - Icons Only -->
-    <!-- Meta tags 'capable' removed to ensure browser UI is always visible for creating shortcuts -->
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -53,37 +45,32 @@
         }
       }
     </script>
-  <script type="importmap">
+<script type="importmap">
 {
   "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
     "date-fns": "https://aistudiocdn.com/date-fns@^4.1.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
     "date-fns/": "https://aistudiocdn.com/date-fns@^4.1.0/",
-    "@firebase/firestore": "https://aistudiocdn.com/@firebase/firestore@^4.9.2",
-    "@firebase/auth": "https://aistudiocdn.com/@firebase/auth@^1.11.1",
-    "@firebase/app": "https://aistudiocdn.com/@firebase/app@^0.14.5",
-    "jspdf": "https://aistudiocdn.com/jspdf@^2.5.1",
-    "jspdf-autotable": "https://aistudiocdn.com/jspdf-autotable@^3.5.29",
+    "jspdf": "https://aistudiocdn.com/jspdf@^3.0.4",
+    "jspdf-autotable": "https://aistudiocdn.com/jspdf-autotable@^5.0.2",
     "xlsx": "https://aistudiocdn.com/xlsx@^0.18.5"
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
   <body>
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
     <script>
-       // Safe Service Worker Check
        if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function(registrations) {
-             // Force update logic if needed
+             // Check logic
           }).catch(err => console.log('SW Check skipped'));
        }
     </script>
-  <script type="module" src="/index.tsx"></script>
-</body>
+  </body>
 </html>
