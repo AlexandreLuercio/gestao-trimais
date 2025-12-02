@@ -1,84 +1,15 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="./favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    
-    <title>Gestão de Tarefas - Trimais Places</title>
-    
-    <meta name="theme-color" content="#003366">
-    <link rel="apple-touch-icon" href="./icon-192.png">
-    
-    <!-- Tailwind via CDN is kept for simplicity in this migration -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              'trimais-blue': '#003366',
-              'trimais-gold': '#d4af37',
-            },
-            animation: {
-                'ping': 'ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite',
-                'fade-in': 'fadeIn 0.3s ease-out',
-                'slide-down': 'slideDown 0.4s ease-out',
-                'swing': 'swing 1s ease-in-out infinite'
-            },
-            keyframes: {
-                fadeIn: {
-                    '0%': { opacity: '0' },
-                    '100%': { opacity: '1' },
-                },
-                slideDown: {
-                    '0%': { transform: 'translate(-50%, -100%)', opacity: '0' },
-                    '100%': { transform: 'translate(-50%, 0)', opacity: '1' },
-                },
-                swing: {
-                    '0%, 100%': { transform: 'rotate(0deg)' },
-                    '20%': { transform: 'rotate(15deg)' },
-                    '40%': { transform: 'rotate(-10deg)' },
-                    '60%': { transform: 'rotate(5deg)' },
-                    '80%': { transform: 'rotate(-5deg)' },
-                }
-            }
-          }
-        }
-      }
-    </script>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "date-fns": "https://aistudiocdn.com/date-fns@^4.1.0",
-    "date-fns/": "https://aistudiocdn.com/date-fns@^4.1.0/",
-    "jspdf": "https://aistudiocdn.com/jspdf@^3.0.4",
-    "jspdf-autotable": "https://aistudiocdn.com/jspdf-autotable@^5.0.2",
-    "xlsx": "https://aistudiocdn.com/xlsx@^0.18.5",
-    "vite": "https://aistudiocdn.com/vite@^7.2.6",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
-  }
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error("Could not find root element to mount to");
 }
-</script>
-</head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="./index.tsx"></script>
-    <script>
-       if ('serviceWorker' in navigator) {
-          window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js').then(registration => {
-              console.log('SW registered');
-            }).catch(err => {
-              console.log('SW failed');
-            });
-          });
-       }
-    </script>
-  </body>
-</html>
+
+const root = ReactDOM.createRoot(rootElement);
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
