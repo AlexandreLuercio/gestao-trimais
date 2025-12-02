@@ -1,10 +1,8 @@
-
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Occurrence, User, Status, Area, Role, FeedbackType, SystemFeedback, AppNotification, UserStatus, OccurrenceUpdate } from './types';
+import React, { useState, useEffect } from 'react';
+import { Occurrence, User, Status, Area, Role, SystemFeedback, AppNotification, OccurrenceUpdate } from './types';
 import { auth, db } from './firebase/config';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { collection, onSnapshot, doc, getDocs, query, limit, runTransaction, updateDoc, addDoc, deleteDoc, deleteField, orderBy, where, getDoc, setDoc, writeBatch } from 'firebase/firestore';
-import { format } from 'date-fns';
+import { collection, onSnapshot, doc, query, runTransaction, updateDoc, addDoc, deleteDoc, deleteField, orderBy, where, getDoc, setDoc, writeBatch, getDocs } from 'firebase/firestore';
 
 import Header from './components/Header';
 import OccurrenceForm from './components/OccurrenceForm';
@@ -14,16 +12,13 @@ import MyTasks from './components/MyTasks';
 import AdminPanel from './components/AdminPanel';
 import LoginPage from './components/LoginPage';
 import RegistrationPage from './components/RegistrationPage';
-import TeamPanel from './components/TeamPanel';
-import FirstAdminSetup from './components/FirstAdminSetup';
 import TrashPanel from './components/TrashPanel';
-import ConfirmModal from './components/ConfirmModal';
 import FeedbackModal from './components/FeedbackModal';
 import ChangePasswordModal from './components/ChangePasswordModal';
 import NotificationToast from './components/NotificationToast';
 import WelcomeSummaryModal from './components/WelcomeSummaryModal';
 import InstallGuidePage from './components/InstallGuidePage';
-import { APP_VERSION } from './types';
+import FirstAdminSetup from './components/FirstAdminSetup';
 
 export type View = 'form' | 'dashboard' | 'myTasks' | 'admin' | 'team' | 'trash';
 
@@ -85,7 +80,6 @@ const App: React.FC = () => {
       const regId = params.get('register');
       if (regId) setRegisterId(regId);
       
-      // Check if installed
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
       if (!isStandalone && !localStorage.getItem('installGuideSeen')) {
           setShowInstallGuide(true);
@@ -97,13 +91,12 @@ const App: React.FC = () => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
-        // Fetch User Profile
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         const unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 const userData = { id: docSnap.id, ...docSnap.data() } as User;
                 setCurrentUserProfile(userData);
-                setRealRole(userData.role); // Default to real role
+                setRealRole(userData.role);
             } else {
                 setCurrentUserProfile(null);
             }
@@ -147,23 +140,18 @@ const App: React.FC = () => {
           setFeedbacks(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as SystemFeedback)));
       });
 
-      // FIX: Removed orderBy from query to avoid "Missing Index" error.
-      // Sorting is now done client-side.
       const qNotifications = query(collection(db, 'notifications'), where('recipientId', '==', user.uid));
       const unsubNotifications = onSnapshot(qNotifications, (snapshot) => {
           let notifs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AppNotification));
           
-          // Client-side Sort (Newest first)
           notifs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
           
-          // Client-side Limit (Keep top 50)
           if (notifs.length > 50) {
               notifs = notifs.slice(0, 50);
           }
 
           setNotifications(notifs);
           
-          // Toast for newest
           const newest = notifs[0];
           if (newest && !newest.read && Date.now() - new Date(newest.timestamp).getTime() < 10000) {
               setActiveToast(newest);
@@ -195,7 +183,6 @@ const App: React.FC = () => {
       if (!currentUserProfile) return;
       
       try {
-          // Generate ID Logic (Simplified Transaction)
           let uniqueId = '';
           const year = new Date().getFullYear().toString().substr(-2);
           const areaAbbr = getAreaAbbreviation(data.area);
@@ -227,7 +214,6 @@ const App: React.FC = () => {
           setNewOccurrence(addedOccurrence);
           setIsShareModalOpen(true);
 
-          // Notify managers
           const managers = users.filter(u => 
               (u.role === Role.Gestor && u.allowedAreas?.includes(data.area)) || 
               u.role === Role.Admin ||
@@ -261,12 +247,10 @@ const App: React.FC = () => {
           const docRef = doc(db, 'occurrences', occurrenceId);
           await updateDoc(docRef, updates);
           
-          // Notify Creator if status changes
           if (updates.status && currentUserProfile) {
               const occ = occurrences.find(o => o.id === occurrenceId);
               if (occ && occ.createdBy !== currentUserProfile.uid) {
                   const creatorNotifRef = doc(collection(db, 'notifications'));
-                  // Check if creator still exists
                   const creatorUser = users.find(u => u.uid === occ.createdBy);
                   if (creatorUser) {
                       await setDoc(creatorNotifRef, {
@@ -317,33 +301,27 @@ const App: React.FC = () => {
       }
   };
 
-  // --- USER MANAGEMENT ---
-
   const handleInviteUser = async (inviteData: { email: string; whatsapp?: string; allowedAreas: Area[]; role: Role; invitedBy: string, name?: string }) => {
     try {
-        // 1. Check if user already exists (Active or Deleted) to clean up old records
-        // This prevents the "Invalid Document Reference" or "User Already Exists" error on broken records.
         const q = query(collection(db, 'users'), where('email', '==', inviteData.email));
         const snapshot = await getDocs(q);
         
         const batch = writeBatch(db);
 
         if (!snapshot.empty) {
-             // Clean up old records for this email
              snapshot.forEach(doc => {
                  batch.delete(doc.ref);
              });
         }
         
-        // 2. Create the new Invite Document
-        const newDocRef = doc(collection(db, 'users')); // Auto-ID
+        const newDocRef = doc(collection(db, 'users'));
         const newId = newDocRef.id;
 
         batch.set(newDocRef, {
             ...inviteData,
             status: 'Pendente',
-            id: newId, // Ensure ID field matches Document ID
-            uid: newId // Temporary UID until registration
+            id: newId,
+            uid: newId
         });
         
         await batch.commit();
@@ -372,10 +350,8 @@ const App: React.FC = () => {
           return;
       }
       try {
-          // Hard Delete: Actually remove the document so email can be reused
           await deleteDoc(doc(db, 'users', userId));
 
-          // Clean up notifications related to this user to prevent ghost notifications
           const batch = writeBatch(db);
           const qNotif = query(collection(db, 'notifications'), where('recipientId', '==', userId));
           const notifSnap = await getDocs(qNotif);
@@ -389,13 +365,11 @@ const App: React.FC = () => {
   };
 
   const handleToggleUserBlock = async (targetUser: User) => {
-      const newStatus: UserStatus = targetUser.status === 'Bloqueado' ? 'Ativo' : 'Bloqueado';
+      const newStatus = targetUser.status === 'Bloqueado' ? 'Ativo' : 'Bloqueado';
       await handleUpdateUser(targetUser.id, { status: newStatus });
   };
   
-  // --- FEEDBACK & SYSTEM ---
-
-  const handleSubmitFeedback = async (type: FeedbackType, content: string) => {
+  const handleSubmitFeedback = async (type: any, content: string) => {
       if (!currentUserProfile) return;
       try {
           await addDoc(collection(db, 'system_feedback'), {
@@ -468,20 +442,17 @@ const App: React.FC = () => {
   };
 
   const handleSimulateRole = (role: Role | null) => {
-      if (currentUserProfile?.role !== Role.Admin) return; // Security check
+      if (currentUserProfile?.role !== Role.Admin) return;
       setIsSimulating(!!role);
       
       if (role) {
           setCurrentUserProfile(prev => prev ? { ...prev, role } : null);
       } else {
-          // Reset to real role
           if (realRole) {
                setCurrentUserProfile(prev => prev ? { ...prev, role: realRole } : null);
           }
       }
   };
-
-  // --- RENDER ---
 
   if (authLoading) {
     return (
@@ -491,29 +462,20 @@ const App: React.FC = () => {
     );
   }
 
-  // 1. REGISTRATION VIEW
   if (registerId) {
       return <RegistrationPage userIdToRegister={registerId} />;
   }
 
-  // 2. LOGIN VIEW
   if (!user || !currentUserProfile) {
-      // Check if it's the very first run (no users) to show First Setup
-      // Note: In a real app, you might want a more robust check, but checking if users array is empty (from a public query) is risky.
-      // Better to manually enable setup or assume login page handles "User Not Found".
-      // For this PWA, we assume user must be invited or is the first admin.
-      
       return (
         <>
             <LoginPage />
-            {/* Hidden Trigger for First Setup - if login fails and no users exist, logic could be added here */}
-            {/* But for simplicity, we assume we use the FirstAdminSetup component only if explicitly routed or manually handled */}
             <div className="fixed bottom-4 right-4 opacity-50 hover:opacity-100">
                 <button 
-                    onClick={() => setActiveView('admin')} // Hacky way to trigger setup if needed
+                    onClick={() => setActiveView('admin')}
                     className="text-xs text-gray-300 hover:text-gray-500"
                 >
-                    Admin Setup (Dev)
+                    Admin Setup
                 </button>
             </div>
             {activeView === 'admin' && <div className="fixed inset-0 z-50 bg-white"><FirstAdminSetup onSetupComplete={() => setActiveView('dashboard')} /></div>}
@@ -521,7 +483,6 @@ const App: React.FC = () => {
       );
   }
 
-  // 3. MAIN APP VIEW
   return (
     <div className="min-h-screen bg-gray-100 font-sans text-gray-900 pb-20">
       <Header 
@@ -537,9 +498,7 @@ const App: React.FC = () => {
         onChangePassword={() => setIsChangePasswordModalOpen(true)}
       />
 
-      {/* Main Content Area */}
       <main className="container mx-auto px-4 md:px-6 py-6 max-w-7xl">
-        
         {activeView === 'dashboard' && (
           <div className="animate-fade-in">
              <Dashboard 
@@ -596,11 +555,8 @@ const App: React.FC = () => {
                  />
              </div>
         )}
-
-        {/* Team Panel is technically part of Admin logic but can be a separate view if needed */}
       </main>
 
-      {/* MODALS & OVERLAYS */}
       {isShareModalOpen && newOccurrence && (
         <ShareModal 
             occurrence={newOccurrence} 
@@ -635,7 +591,6 @@ const App: React.FC = () => {
         userName={currentUserProfile.name}
       />
 
-      {/* INSTALL GUIDE OVERLAY */}
       {showInstallGuide && (
           <InstallGuidePage onContinue={() => {
               setShowInstallGuide(false);
