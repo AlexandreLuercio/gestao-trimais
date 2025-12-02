@@ -8,9 +8,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     define: {
-      'process.env.API_KEY': JSON.stringify(env.API_KEY),
-      // Polyfill for process to avoid crashes in browser if libs use it
-      'process.env': {} 
+      'process.env.API_KEY': JSON.stringify(env.API_KEY)
     },
     build: {
       outDir: 'dist',
