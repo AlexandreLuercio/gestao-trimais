@@ -199,329 +199,450 @@ const App: React.FC = () => {
           let uniqueId = '';
           const year = new Date().getFullYear().toString().substr(-2);
           const areaAbbr = getAreaAbbreviation(data.area);
-
+          
           await runTransaction(db, async (transaction) => {
               const counterRef = doc(db, 'counters', 'occurrences');
               const counterDoc = await transaction.get(counterRef);
-              
-              let currentCount = 1;
+              let nextId = 1;
               if (counterDoc.exists()) {
-                  currentCount = counterDoc.data().count + 1;
+                  nextId = counterDoc.data().count + 1;
               }
-              
-              transaction.set(counterRef, { count: currentCount });
-              uniqueId = `${String(currentCount).padStart(3, '0')}-${year}-${areaAbbr}`;
+              transaction.set(counterRef, { count: nextId });
+              uniqueId = `${String(nextId).padStart(3, '0')}-${year}-${areaAbbr}`;
           });
 
-          const newOcc: any = {
+          const newOccurrenceData = {
               ...data,
-              uniqueId,
               timestamp: new Date().toISOString(),
               status: Status.Aberto,
               createdBy: currentUserProfile.uid,
               creatorName: currentUserProfile.name,
-              updatesLog: [{
-                  text: `Tarefa criada por ${currentUserProfile.name}`,
-                  timestamp: new Date().toISOString(),
-                  authorName: currentUserProfile.name
-              }]
+              uniqueId: uniqueId,
+              updatesLog: []
           };
-
-          const docRef = await addDoc(collection(db, 'occurrences'), newOcc);
           
-          setNewOccurrence({ id: docRef.id, ...newOcc });
+          const docRef = await addDoc(collection(db, 'occurrences'), newOccurrenceData);
+          const addedOccurrence = { id: docRef.id, ...newOccurrenceData } as Occurrence;
+          
+          setNewOccurrence(addedOccurrence);
           setIsShareModalOpen(true);
-          setActiveView('myTasks'); // Redirect to list
+
+          // Notify managers
+          const managers = users.filter(u => 
+              (u.role === Role.Gestor && u.allowedAreas?.includes(data.area)) || 
+              u.role === Role.Admin ||
+              u.role === Role.Diretor
+          );
+
+          const batch = writeBatch(db);
+          managers.forEach(manager => {
+              if (manager.uid === currentUserProfile.uid) return;
+              const notifRef = doc(collection(db, 'notifications'));
+              batch.set(notifRef, {
+                  recipientId: manager.uid,
+                  title: 'Nova Tarefa Registrada',
+                  message: `${currentUserProfile.name} registrou uma nova tarefa para ${data.area}: ${data.title}`,
+                  timestamp: new Date().toISOString(),
+                  read: false,
+                  type: 'new',
+                  occurrenceId: docRef.id
+              });
+          });
+          await batch.commit();
+
       } catch (error) {
-          console.error("Error adding occurrence", error);
-          alert("Erro ao criar tarefa.");
+          console.error("Error adding occurrence: ", error);
+          alert("Erro ao adicionar tarefa. Tente novamente.");
       }
   };
 
-  const handleUpdateOccurrence = async (id: string, updates: Partial<Occurrence>) => {
+  const handleUpdateOccurrence = async (occurrenceId: string, updates: Partial<Omit<Occurrence, 'id'>>) => {
       try {
-          await updateDoc(doc(db, 'occurrences', id), updates);
+          const docRef = doc(db, 'occurrences', occurrenceId);
+          await updateDoc(docRef, updates);
+          
+          // Notify Creator if status changes
+          if (updates.status && currentUserProfile) {
+              const occ = occurrences.find(o => o.id === occurrenceId);
+              if (occ && occ.createdBy !== currentUserProfile.uid) {
+                  const creatorNotifRef = doc(collection(db, 'notifications'));
+                  // Check if creator still exists
+                  const creatorUser = users.find(u => u.uid === occ.createdBy);
+                  if (creatorUser) {
+                      await setDoc(creatorNotifRef, {
+                          recipientId: occ.createdBy,
+                          title: 'Atualização de Tarefa',
+                          message: `Sua tarefa "${occ.title}" foi atualizada para: ${updates.status} por ${currentUserProfile.name}`,
+                          timestamp: new Date().toISOString(),
+                          read: false,
+                          type: 'update',
+                          occurrenceId: occurrenceId
+                      });
+                  }
+              }
+          }
       } catch (error) {
-          console.error("Error updating", error);
+          console.error("Error updating occurrence: ", error);
+          alert("Erro ao atualizar tarefa.");
       }
   };
 
   const handleMoveToTrash = async (id: string) => {
-      await updateDoc(doc(db, 'occurrences', id), { deletedAt: new Date().toISOString() });
+      if (!currentUserProfile) return;
+      try {
+          const docRef = doc(db, 'occurrences', id);
+          await updateDoc(docRef, { deletedAt: new Date().toISOString() });
+      } catch (error) {
+          console.error("Error moving to trash:", error);
+          alert("Erro ao mover para lixeira.");
+      }
   };
-  
-  const handleRestore = async (id: string) => {
-      await updateDoc(doc(db, 'occurrences', id), { deletedAt: deleteField() });
+
+  const handleRestoreFromTrash = async (id: string) => {
+      try {
+          const docRef = doc(db, 'occurrences', id);
+          await updateDoc(docRef, { deletedAt: deleteField() });
+      } catch (error) {
+           console.error("Error restoring:", error);
+           alert("Erro ao restaurar tarefa.");
+      }
   };
 
   const handleDeleteForever = async (id: string) => {
-      await deleteDoc(doc(db, 'occurrences', id));
+      try {
+          await deleteDoc(doc(db, 'occurrences', id));
+      } catch (error) {
+          console.error("Error deleting forever:", error);
+          alert("Erro ao excluir permanentemente.");
+      }
   };
 
-  const handleInviteUser = async (inviteData: any) => {
-     try {
-         // Check for existing user first (by email) to avoid duplicates or ghost accounts
-         const q = query(collection(db, 'users'), where('email', '==', inviteData.email));
-         const snapshot = await getDocs(q);
-         
-         if (!snapshot.empty) {
-             const existing = snapshot.docs[0];
-             const userData = existing.data();
-             
-             // If existing user is 'Excluido', we can overwrite/reactivate
-             if (userData.status === 'Excluido') {
-                 await deleteDoc(doc(db, 'users', existing.id)); // Hard delete old to clean up
-             } else {
-                 // Active user exists
-                 alert("Este email já está cadastrado no sistema.");
-                 return null;
-             }
-         }
+  // --- USER MANAGEMENT ---
 
-         const docRef = await addDoc(collection(db, 'users'), {
-             ...inviteData,
-             status: 'Pendente',
-             createdAt: new Date().toISOString()
-         });
-         return docRef.id;
-     } catch (e) {
-         console.error(e);
-         return null;
-     }
+  const handleInviteUser = async (inviteData: { email: string; whatsapp?: string; allowedAreas: Area[]; role: Role; invitedBy: string, name?: string }) => {
+    try {
+        // 1. Check if user already exists (Active or Deleted) to clean up old records
+        // This prevents the "Invalid Document Reference" or "User Already Exists" error on broken records.
+        const q = query(collection(db, 'users'), where('email', '==', inviteData.email));
+        const snapshot = await getDocs(q);
+        
+        const batch = writeBatch(db);
+
+        if (!snapshot.empty) {
+             // Clean up old records for this email
+             snapshot.forEach(doc => {
+                 batch.delete(doc.ref);
+             });
+        }
+        
+        // 2. Create the new Invite Document
+        const newDocRef = doc(collection(db, 'users')); // Auto-ID
+        const newId = newDocRef.id;
+
+        batch.set(newDocRef, {
+            ...inviteData,
+            status: 'Pendente',
+            id: newId, // Ensure ID field matches Document ID
+            uid: newId // Temporary UID until registration
+        });
+        
+        await batch.commit();
+        return newId;
+
+    } catch (error) {
+        console.error("Error inviting user: ", error);
+        alert("Erro ao criar convite. Verifique o console.");
+        return null;
+    }
   };
 
-  const handleUpdateUser = async (id: string, data: any) => {
-      await updateDoc(doc(db, 'users', id), data);
+  const handleUpdateUser = async (userId: string, data: Partial<User>) => {
+      try {
+          const userRef = doc(db, 'users', userId);
+          await updateDoc(userRef, data);
+      } catch (error) {
+          console.error("Error updating user:", error);
+          alert("Erro ao atualizar usuário.");
+      }
   };
   
-  const handleDeleteUser = async (id: string) => {
-      // HARD DELETE to allow re-invitation without errors
-      // Also cleanup notifications for this user
-      
+  const handleRequestDeleteUser = async (userId: string) => {
+      if (!userId) {
+          console.error("Invalid User ID for deletion");
+          return;
+      }
       try {
-          // 1. Delete Notifications
-          const qNotif = query(collection(db, 'notifications'), where('recipientId', '==', id));
-          const snapshot = await getDocs(qNotif);
+          // Hard Delete: Actually remove the document so email can be reused
+          await deleteDoc(doc(db, 'users', userId));
+
+          // Clean up notifications related to this user to prevent ghost notifications
           const batch = writeBatch(db);
-          snapshot.docs.forEach(doc => {
-              batch.delete(doc.ref);
-          });
-          
-          // 2. Delete User Doc
-          const userRef = doc(db, 'users', id);
-          batch.delete(userRef);
-          
+          const qNotif = query(collection(db, 'notifications'), where('recipientId', '==', userId));
+          const notifSnap = await getDocs(qNotif);
+          notifSnap.forEach(d => batch.delete(d.ref));
           await batch.commit();
-          
-      } catch (e) {
-          console.error("Error deleting user:", e);
+
+      } catch (error) {
+          console.error("Error deleting user:", error);
           alert("Erro ao excluir usuário.");
       }
   };
-  
-  const handleToggleBlock = async (user: User) => {
-      const newStatus = user.status === 'Bloqueado' ? 'Ativo' : 'Bloqueado';
-      await updateDoc(doc(db, 'users', user.id), { status: newStatus });
+
+  const handleToggleUserBlock = async (targetUser: User) => {
+      const newStatus: UserStatus = targetUser.status === 'Bloqueado' ? 'Ativo' : 'Bloqueado';
+      await handleUpdateUser(targetUser.id, { status: newStatus });
   };
+  
+  // --- FEEDBACK & SYSTEM ---
 
   const handleSubmitFeedback = async (type: FeedbackType, content: string) => {
       if (!currentUserProfile) return;
-      await addDoc(collection(db, 'system_feedback'), {
-          userId: currentUserProfile.uid,
-          userName: currentUserProfile.name,
-          userRole: currentUserProfile.role,
-          userAreas: currentUserProfile.allowedAreas || [],
-          type,
-          content,
-          timestamp: new Date().toISOString(),
-          isRead: false
-      });
-      alert("Obrigado pelo seu feedback!");
-  };
-
-  const handleMarkNotificationRead = async () => {
       try {
-          const batch = writeBatch(db);
-          notifications.filter(n => !n.read).forEach(n => {
-              const ref = doc(db, 'notifications', n.id);
-              batch.update(ref, { read: true });
+          await addDoc(collection(db, 'system_feedback'), {
+              userId: currentUserProfile.uid,
+              userName: currentUserProfile.name,
+              userRole: currentUserProfile.role,
+              userAreas: currentUserProfile.allowedAreas,
+              type,
+              content,
+              timestamp: new Date().toISOString(),
+              isRead: false
           });
-          await batch.commit();
-      } catch (e) {
-          console.error("Error marking notifications read", e);
+          alert('Feedback enviado com sucesso! Obrigado.');
+          setIsFeedbackModalOpen(false);
+      } catch (error) {
+          console.error("Error sending feedback:", error);
+          alert("Erro ao enviar feedback.");
       }
   };
 
-  const handleSimulateRole = (role: Role | null) => {
-      if (!realRole || !currentUserProfile) return;
-      if (role === null) {
-          setIsSimulating(false);
-          // Restore
-          const realUser = users.find(u => u.uid === currentUserProfile.uid);
-          if (realUser) setCurrentUserProfile(realUser);
-      } else {
-          setIsSimulating(true);
-          setCurrentUserProfile({ ...currentUserProfile, role });
-      }
+  const handleToggleFeedbackRead = async (id: string, currentStatus: boolean) => {
+      try {
+          await updateDoc(doc(db, 'system_feedback', id), { isRead: !currentStatus });
+      } catch (e) { console.error(e); }
+  };
+
+  const handleReplyFeedback = async (id: string, text: string) => {
+       if (!currentUserProfile) return;
+       try {
+           const feedbackRef = doc(db, 'system_feedback', id);
+           const feedbackDoc = await getDoc(feedbackRef);
+           if (feedbackDoc.exists()) {
+               const currentComments = feedbackDoc.data().comments || [];
+               const newComment = {
+                   author: currentUserProfile.name,
+                   text: text,
+                   timestamp: new Date().toISOString(),
+                   isAdmin: true
+               };
+               await updateDoc(feedbackRef, { comments: [...currentComments, newComment] });
+           }
+       } catch(e) { console.error(e); }
+  };
+
+  const handleDeleteFeedback = async (id: string) => {
+      try {
+          await deleteDoc(doc(db, 'system_feedback', id));
+      } catch(e) { console.error(e); }
   };
 
   const handleResetCounters = async () => {
-      await setDoc(doc(db, 'counters', 'occurrences'), { count: 0 });
-      alert("Contadores zerados.");
+      try {
+          await setDoc(doc(db, 'counters', 'occurrences'), { count: 0 });
+          alert("Contador de tarefas zerado com sucesso. A próxima tarefa será #001.");
+      } catch (e) {
+          console.error(e);
+          alert("Erro ao zerar contador.");
+      }
   };
 
-  // --- RENDERING ---
+  const handleMarkNotificationsRead = async () => {
+      if (!currentUserProfile) return;
+      const batch = writeBatch(db);
+      const unread = notifications.filter(n => !n.read);
+      unread.forEach(n => {
+          const ref = doc(db, 'notifications', n.id);
+          batch.update(ref, { read: true });
+      });
+      if (unread.length > 0) await batch.commit();
+  };
+
+  const handleSimulateRole = (role: Role | null) => {
+      if (currentUserProfile?.role !== Role.Admin) return; // Security check
+      setIsSimulating(!!role);
+      
+      if (role) {
+          setCurrentUserProfile(prev => prev ? { ...prev, role } : null);
+      } else {
+          // Reset to real role
+          if (realRole) {
+               setCurrentUserProfile(prev => prev ? { ...prev, role: realRole } : null);
+          }
+      }
+  };
+
+  // --- RENDER ---
 
   if (authLoading) {
-      return (
-          <div className="min-h-screen flex items-center justify-center bg-gray-100">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-trimais-blue"></div>
-          </div>
-      );
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-trimais-blue"></div>
+      </div>
+    );
   }
 
-  // INSTALL GUIDE
-  if (showInstallGuide) {
-      return <InstallGuidePage onContinue={() => { setShowInstallGuide(false); localStorage.setItem('installGuideSeen', 'true'); }} />;
-  }
-
-  // REGISTRATION
-  if (registerId && !user) {
+  // 1. REGISTRATION VIEW
+  if (registerId) {
       return <RegistrationPage userIdToRegister={registerId} />;
   }
 
-  // FIRST SETUP
-  if (!user && users.length === 0 && !authLoading) {
-      return <FirstAdminSetup onSetupComplete={() => window.location.reload()} />;
-  }
-
-  // LOGIN
+  // 2. LOGIN VIEW
   if (!user || !currentUserProfile) {
-      // If user is authenticated but no profile found in Firestore (and not registering), logout or show access denied.
-      if (user) {
-           return (
-               <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4 text-center">
-                   <h2 className="text-xl font-bold text-red-600 mb-2">Acesso Negado ou Perfil Não Encontrado</h2>
-                   <p className="text-gray-600 mb-4">Seu usuário não possui um perfil ativo no sistema.</p>
-                   <p className="text-xs text-gray-500 mb-6">UID: {user.uid}</p>
-                   <button onClick={() => auth.signOut()} className="bg-trimais-blue text-white px-4 py-2 rounded">Voltar para Login</button>
-               </div>
-           );
-      }
-      return <LoginPage />;
+      // Check if it's the very first run (no users) to show First Setup
+      // Note: In a real app, you might want a more robust check, but checking if users array is empty (from a public query) is risky.
+      // Better to manually enable setup or assume login page handles "User Not Found".
+      // For this PWA, we assume user must be invited or is the first admin.
+      
+      return (
+        <>
+            <LoginPage />
+            {/* Hidden Trigger for First Setup - if login fails and no users exist, logic could be added here */}
+            {/* But for simplicity, we assume we use the FirstAdminSetup component only if explicitly routed or manually handled */}
+            <div className="fixed bottom-4 right-4 opacity-50 hover:opacity-100">
+                <button 
+                    onClick={() => setActiveView('admin')} // Hacky way to trigger setup if needed
+                    className="text-xs text-gray-300 hover:text-gray-500"
+                >
+                    Admin Setup (Dev)
+                </button>
+            </div>
+            {activeView === 'admin' && <div className="fixed inset-0 z-50 bg-white"><FirstAdminSetup onSetupComplete={() => setActiveView('dashboard')} /></div>}
+        </>
+      );
   }
 
-  // MAIN APP
+  // 3. MAIN APP VIEW
   return (
-    <div className="min-h-screen bg-gray-100 font-sans text-gray-900 pb-10">
+    <div className="min-h-screen bg-gray-100 font-sans text-gray-900 pb-20">
       <Header 
         activeView={activeView} 
         setActiveView={setActiveView} 
         currentUser={currentUserProfile}
-        realRole={realRole || undefined}
+        realRole={realRole || Role.Gestor}
         onSimulateRole={handleSimulateRole}
         isSimulating={isSimulating}
         onOpenFeedback={() => setIsFeedbackModalOpen(true)}
         notifications={notifications}
-        onMarkNotificationsRead={handleMarkNotificationRead}
+        onMarkNotificationsRead={handleMarkNotificationsRead}
         onChangePassword={() => setIsChangePasswordModalOpen(true)}
       />
 
-      <main className="container mx-auto px-4 md:px-6 py-6">
+      {/* Main Content Area */}
+      <main className="container mx-auto px-4 md:px-6 py-6 max-w-7xl">
+        
         {activeView === 'dashboard' && (
-            <Dashboard 
+          <div className="animate-fade-in">
+             <Dashboard 
                 occurrences={occurrences.filter(o => !o.deletedAt)} 
                 users={users} 
-                currentUser={currentUserProfile}
+                currentUser={currentUserProfile} 
                 onMoveToTrash={handleMoveToTrash}
-            />
-        )}
-        
-        {activeView === 'myTasks' && (
-            <MyTasks 
-                occurrences={occurrences.filter(o => !o.deletedAt)} 
-                currentUser={currentUserProfile}
-                users={users}
-                updateOccurrence={handleUpdateOccurrence}
-                onMoveToTrash={handleMoveToTrash}
-            />
+             />
+          </div>
         )}
 
         {activeView === 'form' && (
+          <div className="animate-slide-down">
             <OccurrenceForm onAddOccurrence={handleAddOccurrence} />
+          </div>
+        )}
+
+        {activeView === 'myTasks' && (
+           <div className="animate-fade-in">
+             <MyTasks 
+                occurrences={occurrences.filter(o => !o.deletedAt)} 
+                currentUser={currentUserProfile} 
+                users={users}
+                updateOccurrence={handleUpdateOccurrence} 
+                onMoveToTrash={handleMoveToTrash}
+             />
+           </div>
         )}
 
         {activeView === 'admin' && currentUserProfile.role === Role.Admin && (
+          <div className="animate-fade-in">
             <AdminPanel 
                 users={users} 
-                currentUser={currentUserProfile} 
-                onInviteUser={handleInviteUser}
-                onUpdateUser={handleUpdateUser}
-                onRequestDeleteUser={handleDeleteUser}
-                onToggleUserBlock={handleToggleBlock}
-                feedbacks={feedbacks}
-                onToggleFeedbackRead={async (id, current) => updateDoc(doc(db, 'system_feedback', id), { isRead: !current })}
-                onReplyFeedback={async (id, text) => {
-                    const fb = feedbacks.find(f => f.id === id);
-                    if (fb) {
-                        const comments = fb.comments || [];
-                        comments.push({ author: currentUserProfile.name, text, timestamp: new Date().toISOString(), isAdmin: true });
-                        await updateDoc(doc(db, 'system_feedback', id), { comments });
-                    }
-                }}
-                onDeleteFeedback={async (id) => deleteDoc(doc(db, 'system_feedback', id))}
-                onResetCounters={handleResetCounters}
-            />
-        )}
-        
-        {/* Team Panel for Gestor/Admin */}
-        {activeView === 'team' && (currentUserProfile.role === Role.Admin || currentUserProfile.role === Role.Gestor) && (
-            <TeamPanel 
-                users={users}
                 currentUser={currentUserProfile}
                 onInviteUser={handleInviteUser}
+                onUpdateUser={handleUpdateUser}
+                onRequestDeleteUser={handleRequestDeleteUser}
+                onToggleUserBlock={handleToggleUserBlock}
+                feedbacks={feedbacks}
+                onToggleFeedbackRead={handleToggleFeedbackRead}
+                onReplyFeedback={handleReplyFeedback}
+                onDeleteFeedback={handleDeleteFeedback}
+                onResetCounters={handleResetCounters}
             />
+          </div>
+        )}
+        
+        {activeView === 'trash' && (
+             <div className="animate-fade-in">
+                 <TrashPanel 
+                    occurrences={occurrences.filter(o => o.deletedAt)} 
+                    onRestore={handleRestoreFromTrash}
+                    onDeleteForever={handleDeleteForever}
+                 />
+             </div>
         )}
 
-        {activeView === 'trash' && (
-             <TrashPanel 
-                occurrences={occurrences.filter(o => o.deletedAt)}
-                onRestore={handleRestore}
-                onDeleteForever={handleDeleteForever}
-             />
-        )}
+        {/* Team Panel is technically part of Admin logic but can be a separate view if needed */}
       </main>
 
-      {/* MODALS */}
-      {newOccurrence && isShareModalOpen && (
-          <ShareModal occurrence={newOccurrence} onClose={() => setIsShareModalOpen(false)} />
+      {/* MODALS & OVERLAYS */}
+      {isShareModalOpen && newOccurrence && (
+        <ShareModal 
+            occurrence={newOccurrence} 
+            onClose={() => { setIsShareModalOpen(false); setActiveView('myTasks'); }} 
+        />
       )}
 
       <FeedbackModal 
         isOpen={isFeedbackModalOpen} 
         onClose={() => setIsFeedbackModalOpen(false)} 
-        onSubmit={handleSubmitFeedback} 
+        onSubmit={handleSubmitFeedback}
       />
-
-      <ChangePasswordModal 
-        isOpen={isChangePasswordModalOpen} 
+      
+      <ChangePasswordModal
+        isOpen={isChangePasswordModalOpen}
         onClose={() => setIsChangePasswordModalOpen(false)}
         user={currentUserProfile}
-        isForced={currentUserProfile.status === 'Pendente' || currentUserProfile.status === 'Provisorio'}
       />
 
-      <NotificationToast 
-        notification={activeToast} 
-        onClose={() => setActiveToast(null)} 
-        onView={() => { setActiveToast(null); /* Could open notif panel */ }} 
-      />
+      {activeToast && (
+        <NotificationToast 
+            notification={activeToast} 
+            onClose={() => setActiveToast(null)}
+            onView={() => { setActiveToast(null); setActiveView('myTasks'); }}
+        />
+      )}
 
       <WelcomeSummaryModal 
-        isOpen={showWelcomeModal} 
+        isOpen={showWelcomeModal}
         onClose={() => setShowWelcomeModal(false)}
         unreadNotifications={notifications.filter(n => !n.read)}
         userName={currentUserProfile.name}
       />
+
+      {/* INSTALL GUIDE OVERLAY */}
+      {showInstallGuide && (
+          <InstallGuidePage onContinue={() => {
+              setShowInstallGuide(false);
+              localStorage.setItem('installGuideSeen', 'true');
+          }} />
+      )}
+
     </div>
   );
 };
