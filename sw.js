@@ -1,24 +1,19 @@
-
-const CACHE_NAME = 'gestao-ocorrencias-v7-production';
+const CACHE_NAME = 'gestao-ocorrencias-v10-final';
 const urlsToCache = [
   './',
   './index.html',
-  // Adicione aqui outros arquivos estáticos importantes (CSS, JS, imagens) se houver
 ];
 
-// Evento de Instalação: Adiciona os arquivos principais ao cache.
 self.addEventListener('install', event => {
-  self.skipWaiting(); // Força o SW a ativar imediatamente
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Opened cache v7');
         return cache.addAll(urlsToCache);
       })
   );
 });
 
-// Evento de Ativação: Limpa caches antigos e assume o controle da página.
 self.addEventListener('activate', event => {
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
@@ -26,23 +21,19 @@ self.addEventListener('activate', event => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
-            console.log('Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
-    }).then(() => self.clients.claim()) // Assume o controle imediato das páginas abertas.
+    }).then(() => self.clients.claim())
   );
 });
 
-// Evento de Fetch: Intercepta as requisições de rede.
 self.addEventListener('fetch', event => {
-  // Ignora requisições que não são GET (ex: POST para o Firestore)
   if (event.request.method !== 'GET') {
     return;
   }
   
-  // Estratégia: Tenta pegar do cache primeiro. Se falhar, vai para a rede.
   event.respondWith(
     caches.match(event.request)
       .then(response => {
@@ -56,7 +47,6 @@ self.addEventListener('fetch', event => {
                  return networkResponse;
                }
             }
-            // Não cacheia tudo dinamicamente para evitar salvar versões velhas nesta fase de dev
             return networkResponse;
           }
         );
