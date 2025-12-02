@@ -10,6 +10,7 @@
     <meta name="theme-color" content="#003366">
     <link rel="apple-touch-icon" href="./icon-192.png">
     
+    <!-- Tailwind via CDN is kept for simplicity in this migration -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -46,7 +47,8 @@
         }
       }
     </script>
-  <script type="importmap">
+    <!-- IMPORTMAP REMOVIDO DEFINITIVAMENTE -->
+<script type="importmap">
 {
   "imports": {
     "react": "https://aistudiocdn.com/react@^19.2.0",
@@ -72,9 +74,9 @@
        if ('serviceWorker' in navigator) {
           window.addEventListener('load', () => {
             navigator.serviceWorker.register('./sw.js').then(registration => {
-              console.log('SW registered: ', registration);
-            }).catch(registrationError => {
-              console.log('SW registration failed: ', registrationError);
+              console.log('SW registered');
+            }).catch(err => {
+              console.log('SW failed');
             });
           });
        }
