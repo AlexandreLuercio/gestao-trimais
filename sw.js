@@ -1,4 +1,5 @@
-const CACHE_NAME = 'gestao-ocorrencias-v5-fix';
+
+const CACHE_NAME = 'gestao-ocorrencias-v6-production';
 const urlsToCache = [
   './',
   './index.html',
@@ -11,7 +12,7 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Opened cache v5');
+        console.log('Opened cache v6');
         return cache.addAll(urlsToCache);
       })
   );
