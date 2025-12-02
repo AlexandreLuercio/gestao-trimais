@@ -1,19 +1,16 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="./favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
     <title>Gestão de Tarefas - Trimais Places</title>
     
     <meta name="theme-color" content="#003366">
     <link rel="apple-touch-icon" href="./icon-192.png">
     
-    <!-- REMOVED IMPORTMAP TO FIX VERCEL CRASH -->
-
+    <!-- Tailwind via CDN is kept for simplicity in this migration -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -57,12 +54,14 @@
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
-    "date-fns": "https://aistudiocdn.com/date-fns@^4.1.0",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "date-fns": "https://aistudiocdn.com/date-fns@^4.1.0",
     "date-fns/": "https://aistudiocdn.com/date-fns@^4.1.0/",
     "jspdf": "https://aistudiocdn.com/jspdf@^3.0.4",
     "jspdf-autotable": "https://aistudiocdn.com/jspdf-autotable@^5.0.2",
-    "xlsx": "https://aistudiocdn.com/xlsx@^0.18.5"
+    "xlsx": "https://aistudiocdn.com/xlsx@^0.18.5",
+    "vite": "https://aistudiocdn.com/vite@^7.2.6",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
   }
 }
 </script>
@@ -72,12 +71,13 @@
     <script type="module" src="./index.tsx"></script>
     <script>
        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then(function(registrations) {
-             for(let registration of registrations) {
-                 // Force update if needed
-                 registration.update();
-             }
-          }).catch(err => console.log('SW Check skipped'));
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').then(registration => {
+              console.log('SW registered');
+            }).catch(err => {
+              console.log('SW failed');
+            });
+          });
        }
     </script>
   </body>
