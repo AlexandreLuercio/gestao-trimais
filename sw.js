@@ -1,7 +1,9 @@
-const CACHE_NAME = 'gestao-ocorrencias-v30-final';
+const CACHE_NAME = 'gestao-ocorrencias-v36-final';
 const urlsToCache = [
   './',
   './index.html',
+  './favicon.ico',
+  './icon-192.png' // Adicionado para PWA (ícone do app)
 ];
 
 self.addEventListener('install', event => {
