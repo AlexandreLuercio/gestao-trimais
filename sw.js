@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gestao-ocorrencias-v12-clean';
+const CACHE_NAME = 'gestao-ocorrencias-v30-final';
 const urlsToCache = [
   './',
   './index.html',
