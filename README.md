@@ -4,6 +4,8 @@
 
 # Run and deploy your AI Studio app
 
+Atualização para fix npm install – versão 2.0.1
+
 This contains everything you need to run your app locally.
 
 View your app in AI Studio: https://ai.studio/apps/drive/1pa106mv6vuIwAcsiV5-AzH0_C8g71x3B
