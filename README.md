@@ -22,3 +22,4 @@ View your app in AI Studio: https://ai.studio/apps/drive/1pa106mv6vuIwAcsiV5-AzH
    `npm run dev`
 "Atualização para limpar cache – 09/12/2025"
 "// Update 09/12"
+Update para fixar Firebase config - commit forçado (09/12/2025)
