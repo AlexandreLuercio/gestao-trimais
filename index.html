@@ -5,40 +5,16 @@
 <!-- Fix para deploy Vercel - 08/12/2025 -->
 <meta name="theme-color" content="#003366">
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><text y='.9em' font-size='160'>📋</text></svg>">
-<!-- Tailwind via CDN (Mantido para estilização rápida) -->
-<script src="https://cdn.tailwindcss.com"></script>
+<div id="root"></div>
+<script type="module" src="./index.tsx"></script>
 <script>
-tailwind.config = {
-theme: {
-extend: {
-colors: {
-'trimais-blue': '#003366',
-'trimais-gold': '#d4af37',
-},
-animation: {
-'ping': 'ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite',
-'fade-in': 'fadeIn 0.3s ease-out',
-'slide-down': 'slideDown 0.4s ease-out',
-'swing': 'swing 1s ease-in-out infinite'
-},
-keyframes: {
-fadeIn: {
-'0%': { opacity: '0' },
-'100%': { opacity: '1' },
-},
-slideDown: {
-'0%': { transform: 'translate(-50%, -100%)', opacity: '0' },
-'100%': { transform: 'translate(-50%, 0)', opacity: '1' },
-},
-swing: {
-'0%, 100%': { transform: 'rotate(0deg)' },
-'20%': { transform: 'rotate(15deg)' },
-'40%': { transform: 'rotate(-10deg)' },
-'60%': { transform: 'rotate(5deg)' },
-'80%': { transform: 'rotate(-5deg)' },
-}
-}
-}
-}
+if ('serviceWorker' in navigator) {
+window.addEventListener('load', () => {
+navigator.serviceWorker.register('./sw.js').then(registration => {
+console.log('SW registered');
+}).catch(err => {
+console.log('SW failed');
+});
+});
 }
 </script>
