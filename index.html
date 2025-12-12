@@ -1,46 +1,14 @@
-
-
-
-
-
-
-
-
-
-
-<meta charset="UTF-8" />
-
-
-
-<link rel="icon" type="image/svg+xml" href="/vite.svg" />
-
-
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-
-
-<title>Gestão TriMais</title>
-
-
-
-<link rel="stylesheet" href="/src/index.css">
-
-
-
-
-
-
-
-
-
-<div id="root"></div>
-
-
-
-<script type="module" src="/src/main.tsx"></script>
-
-
-
-
-
+<!doctype html> – Declaração HTML5 (essencial para browsers modernos, evita modo quirks).
+<html lang="pt-BR"> – Tag raiz, com idioma para acessibilidade (pt-BR para português do Brasil).
+  <head> – Início do head (indentação 2 espaços).
+    <meta charset="UTF-8" /> – Codificação UTF-8 para acentos e caracteres especiais.
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" /> – Favicon do Vite (ícone da aba).
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /> – Responsivo para mobile.
+    <title>Gestão TriMais</title> – Título da aba/página.
+    <link rel="stylesheet" href="/src/index.css"> – Carrega o CSS compilado do Tailwind (sem CDN).
+  </head> – Fecha head.
+  <body> – Início do body.
+    <div id="root"></div> – Container onde o React monta o app (essencial).
+    <script type="module" src="/src/main.tsx"></script> – Carrega o entry point do React (TypeScript).
+  </body> – Fecha body.
+</html> – Fecha HTML.
