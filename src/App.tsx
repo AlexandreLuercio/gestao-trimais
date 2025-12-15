@@ -23,156 +23,192 @@ import FirstAdminSetup from './components/FirstAdminSetup';
 
 
 const getAreaAbbreviation = (area: Area | string): string => {
-if (area === 'Operações' || area === 'Operacoes') return 'OPE';
+  if (area === 'Operações' || area === 'Operacoes') return 'OPE';
 
-const abbreviations: Record<string, string> = {
+  const abbreviations: Record<string, string> = {
 
-[Area.Manutencao]: 'MAN',
-
-
-
-[Area.Limpeza]: 'LIM',
+    [Area.Manutencao]: 'MAN',
 
 
 
-[Area.Seguranca]: 'SEG',
+    [Area.Limpeza]: 'LIM',
 
 
 
-[Area.Marketing]: 'MKT',
+    [Area.Seguranca]: 'SEG',
 
 
 
-[Area.Financeiro]: 'FIN',
+    [Area.Marketing]: 'MKT',
 
 
 
-[Area.Estacionamento]: 'EST',
+    [Area.Financeiro]: 'FIN',
 
 
 
-[Area.Comercial]: 'COM',
+    [Area.Estacionamento]: 'EST',
 
 
 
-[Area.Administrativo]: 'ADM',
+    [Area.Comercial]: 'COM',
 
 
 
-[Area.Superintendencia]: 'SUP',
+    [Area.Administrativo]: 'ADM',
 
 
 
-[Area.Diretoria]: 'DIR',
+    [Area.Superintendencia]: 'SUP',
 
 
-};
-return abbreviations[area as string] || 'GER';
+
+    [Area.Diretoria]: 'DIR',
+
+
+  };
+  return abbreviations[area as string] || 'GER';
 };
 
 const App: React.FC = () => {
-// --- AUTH & USER STATE ---
-const [user, setUser] = useState<FirebaseUser | null>(null);
-const [currentUserProfile, setCurrentUserProfile] = useState<User | null>(null);
-const [authLoading, setAuthLoading] = useState(true);
+  // --- AUTH & USER STATE ---
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
-// --- DATA STATE ---
-const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
-const [users, setUsers] = useState<User[]>([]);
-const [feedbacks, setFeedbacks] = useState<SystemFeedback[]>([]);
-const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  // --- DATA STATE ---
+  const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [feedbacks, setFeedbacks] = useState<SystemFeedback[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
-// --- NOTIFICATION UX STATE ---
-const [activeToast, setActiveToast] = useState<AppNotification | null>(null);
-const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  // --- NOTIFICATION UX STATE ---
+  const [activeToast, setActiveToast] = useState<AppNotification | null>(null);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
 
-// --- VIEW STATE ---
-const [activeView, setActiveView] = useState('dashboard');
-const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-const [newOccurrence, setNewOccurrence] = useState<Occurrence | null>(null);
+  // --- VIEW STATE ---
+  const [activeView, setActiveView] = useState('dashboard');
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [newOccurrence, setNewOccurrence] = useState<Occurrence | null>(null);
 
-// --- ADMIN/FEEDBACK MODALS ---
-const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
-const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+  // --- ADMIN/FEEDBACK MODALS ---
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
 
-// --- SIMULATION ---
-const [realRole, setRealRole] = useState<Role | null>(null);
-const [isSimulating, setIsSimulating] = useState(false);
+  // --- SIMULATION ---
+  const [realRole, setRealRole] = useState<Role | null>(null);
+  const [isSimulating, setIsSimulating] = useState(false);
 
-// --- INSTALL GUIDE ---
-const [showInstallGuide, setShowInstallGuide] = useState(false);
+  // --- INSTALL GUIDE ---
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
 
-// --- URL PARAMS ---
-const [registerId, setRegisterId] = useState<string | null>(null);
+  // --- URL PARAMS ---
+  const [registerId, setRegisterId] = useState<string | null>(null);
 
-useEffect(() => {
+  useEffect(() => {
 
-const params = new URLSearchParams(window.location.search);
-
-
-
-const regId = params.get('register');
+    const params = new URLSearchParams(window.location.search);
 
 
 
-if (regId) setRegisterId(regId);
+    const regId = params.get('register');
+
+
+
+    if (regId) setRegisterId(regId);
 
 
 
 
-const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
 
 
 
-if (!isStandalone && !localStorage.getItem('installGuideSeen')) {
+    if (!isStandalone && !localStorage.getItem('installGuideSeen')) {
 
 
 
-  setShowInstallGuide(true);
+      setShowInstallGuide(true);
 
 
 
-}
+    }
 
 
-}, []);
+  }, []);
 
-// AUTH LISTENER
-useEffect(() => {
+  // AUTH LISTENER
+  useEffect(() => {
 
-const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-
-
-
-  setUser(firebaseUser);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
 
 
 
-  if (firebaseUser) {
+      setUser(firebaseUser);
 
 
 
-    const userDocRef = doc(db, 'users', firebaseUser.uid);
+      if (firebaseUser) {
 
 
 
-    const unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
 
 
 
-      if (docSnap.exists()) {
+        const unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
 
 
 
-        const userData = { id: docSnap.id, ...docSnap.data() } as User;
+          if (docSnap.exists()) {
 
 
 
-        setCurrentUserProfile(userData);
+            const userData = { id: docSnap.id, ...docSnap.data() } as User;
 
 
 
-        setRealRole(userData.role);
+            setCurrentUserProfile(userData);
+
+
+
+            setRealRole(userData.role);
+
+
+
+          } else {
+
+
+
+            setCurrentUserProfile(null);
+
+
+
+          }
+
+
+
+          setAuthLoading(false);
+
+
+
+        }, (error) => {
+
+
+
+          console.error("Error fetching user profile:", error);
+
+
+
+          setAuthLoading(false);
+
+
+
+        });
+
+
+
+        return () => unsubscribeUser();
 
 
 
@@ -184,23 +220,11 @@ const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
 
 
 
+        setAuthLoading(false);
+
+
+
       }
-
-
-
-      setAuthLoading(false);
-
-
-
-    }, (error) => {
-
-
-
-      console.error("Error fetching user profile:", error);
-
-
-
-      setAuthLoading(false);
 
 
 
@@ -208,282 +232,35 @@ const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
 
 
 
-    return () => unsubscribeUser();
+    return () => unsubscribe();
 
 
+  }, []);
 
-  } else {
+  // DATA LISTENERS
+  useEffect(() => {
 
+    if (!user) {
 
 
-    setCurrentUserProfile(null);
 
+      setOccurrences([]);
 
 
-    setAuthLoading(false);
 
+      setUsers([]);
 
 
-  }
 
+      setFeedbacks([]);
 
 
-});
 
+      setNotifications([]);
 
 
-return () => unsubscribe();
 
-
-}, []);
-
-// DATA LISTENERS
-useEffect(() => {
-
-if (!user) {
-
-
-
-  setOccurrences([]);
-
-
-
-  setUsers([]);
-
-
-
-  setFeedbacks([]);
-
-
-
-  setNotifications([]);
-
-
-
-  return;
-
-
-
-}
-
-
-
-
-const qOccurrences = query(collection(db, 'occurrences'), orderBy('timestamp', 'desc'));
-
-
-
-const unsubOccurrences = onSnapshot(qOccurrences, (snapshot) => {
-
-
-
-  const occs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Occurrence));
-
-
-
-  setOccurrences(occs);
-
-
-
-});
-
-
-
-
-const qUsers = query(collection(db, 'users'));
-
-
-
-const unsubUsers = onSnapshot(qUsers, (snapshot) => {
-
-
-
-  setUsers(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as User)));
-
-
-
-});
-
-
-
-
-const qFeedbacks = query(collection(db, 'system_feedback'), orderBy('timestamp', 'desc'));
-
-
-
-const unsubFeedbacks = onSnapshot(qFeedbacks, (snapshot) => {
-
-
-
-  setFeedbacks(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as SystemFeedback)));
-
-
-
-});
-
-
-
-
-const qNotifications = query(collection(db, 'notifications'), where('recipientId', '==', user.uid));
-
-
-
-const unsubNotifications = onSnapshot(qNotifications, (snapshot) => {
-
-
-
-  let notifs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AppNotification));
-
-
-
-
-  notifs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-
-
-
-  if (notifs.length > 50) {
-
-
-
-    notifs = notifs.slice(0, 50);
-
-
-
-  }
-
-
-
-
-  setNotifications(notifs);
-
-
-
-
-  const newest = notifs[0];
-
-
-
-  if (newest && !newest.read && Date.now() - new Date(newest.timestamp).getTime() < 10000) {
-
-
-
-    setActiveToast(newest);
-
-
-
-  }
-
-
-
-});
-
-
-
-
-return () => {
-
-
-
-  unsubOccurrences();
-
-
-
-  unsubUsers();
-
-
-
-  unsubFeedbacks();
-
-
-
-  unsubNotifications();
-
-
-
-};
-
-
-}, [user]);
-
-// Welcome Modal Logic
-useEffect(() => {
-
-if (currentUserProfile && !authLoading && notifications.length > 0) {
-
-
-
-  const unread = notifications.filter(n => !n.read);
-
-
-
-  if (unread.length > 0 && !sessionStorage.getItem('welcomeShown')) {
-
-
-
-    setShowWelcomeModal(true);
-
-
-
-    sessionStorage.setItem('welcomeShown', 'true');
-
-
-
-  }
-
-
-
-}
-
-
-}, [currentUserProfile, authLoading, notifications]);
-
-// --- ACTIONS ---
-
-
-if (!currentUserProfile) return;
-
-
-
-
-try {
-
-
-
-  let uniqueId = '';
-
-
-
-  const year = new Date().getFullYear().toString().substr(-2);
-
-
-
-  const areaAbbr = getAreaAbbreviation(data.area);
-
-
-
-
-  await runTransaction(db, async (transaction) => {
-
-
-
-    const counterRef = doc(db, 'counters', 'occurrences');
-
-
-
-    const counterDoc = await transaction.get(counterRef);
-
-
-
-    let nextId = 1;
-
-
-
-    if (counterDoc.exists()) {
-
-
-
-      nextId = counterDoc.data().count + 1;
+      return;
 
 
 
@@ -491,140 +268,20 @@ try {
 
 
 
-    transaction.set(counterRef, { count: nextId });
 
+    const qOccurrences = query(collection(db, 'occurrences'), orderBy('timestamp', 'desc'));
 
 
-    uniqueId = `${String(nextId).padStart(3, '0')}-${year}-${areaAbbr}`;
 
+    const unsubOccurrences = onSnapshot(qOccurrences, (snapshot) => {
 
 
-  });
 
+      const occs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Occurrence));
 
 
 
-  const newOccurrenceData = {
-
-
-
-    ...data,
-
-
-
-    timestamp: new Date().toISOString(),
-
-
-
-    status: Status.Aberto,
-
-
-
-    createdBy: currentUserProfile.uid,
-
-
-
-    creatorName: currentUserProfile.name,
-
-
-
-    uniqueId: uniqueId,
-
-
-
-    updatesLog: []
-
-
-
-  };
-
-
-
-
-  const docRef = await addDoc(collection(db, 'occurrences'), newOccurrenceData);
-
-
-
-  const addedOccurrence = { id: docRef.id, ...newOccurrenceData } as Occurrence;
-
-
-
-
-  setNewOccurrence(addedOccurrence);
-
-
-
-  setIsShareModalOpen(true);
-
-
-
-
-  const managers = users.filter(u => 
-
-
-
-    (u.role === Role.Gestor && u.allowedAreas?.includes(data.area)) || 
-
-
-
-    u.role === Role.Admin ||
-
-
-
-    u.role === Role.Diretor
-
-
-
-  );
-
-
-
-
-  const batch = writeBatch(db);
-
-
-
-  managers.forEach(manager => {
-
-
-
-    if (manager.uid === currentUserProfile.uid) return;
-
-
-
-    const notifRef = doc(collection(db, 'notifications'));
-
-
-
-    batch.set(notifRef, {
-
-
-
-      recipientId: manager.uid,
-
-
-
-      title: 'Nova Tarefa Registrada',
-
-
-
-      message: `${currentUserProfile.name} registrou uma nova tarefa para ${data.area}: ${data.title}`,
-
-
-
-      timestamp: new Date().toISOString(),
-
-
-
-      read: false,
-
-
-
-      type: 'new',
-
-
-
-      occurrenceId: docRef.id
+      setOccurrences(occs);
 
 
 
@@ -632,100 +289,445 @@ try {
 
 
 
-  });
+
+    const qUsers = query(collection(db, 'users'));
 
 
 
-  await batch.commit();
+    const unsubUsers = onSnapshot(qUsers, (snapshot) => {
 
 
 
-
-} catch (error) {
-
-
-
-  console.error("Error adding occurrence: ", error);
+      setUsers(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as User)));
 
 
 
-  alert("Erro ao adicionar tarefa. Tente novamente.");
-
-
-
-}
-
-
-};
-
-const handleUpdateOccurrence = async (occurrenceId: string, updates: Partial<Omit<Occurrence, 'id'>>) => {
-
-try {
-
-
-
-  const docRef = doc(db, 'occurrences', occurrenceId);
-
-
-
-  await updateDoc(docRef, updates);
+    });
 
 
 
 
-  if (updates.status && currentUserProfile) {
+    const qFeedbacks = query(collection(db, 'system_feedback'), orderBy('timestamp', 'desc'));
 
 
 
-    const occ = occurrences.find(o => o.id === occurrenceId);
+    const unsubFeedbacks = onSnapshot(qFeedbacks, (snapshot) => {
 
 
 
-    if (occ && occ.createdBy !== currentUserProfile.uid) {
+      setFeedbacks(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as SystemFeedback)));
 
 
 
-      const creatorNotifRef = doc(collection(db, 'notifications'));
+    });
 
 
 
-      const creatorUser = users.find(u => u.uid === occ.createdBy);
+
+    const qNotifications = query(collection(db, 'notifications'), where('recipientId', '==', user.uid));
 
 
 
-      if (creatorUser) {
+    const unsubNotifications = onSnapshot(qNotifications, (snapshot) => {
 
 
 
-        await setDoc(creatorNotifRef, {
+      let notifs = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AppNotification));
 
 
 
-          recipientId: occ.createdBy,
+
+      notifs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
 
 
-          title: 'Atualização de Tarefa',
+
+      if (notifs.length > 50) {
 
 
 
-          message: `Sua tarefa "${occ.title}" foi atualizada para: ${updates.status} por ${currentUserProfile.name}`,
+        notifs = notifs.slice(0, 50);
 
 
 
+      }
+
+
+
+
+      setNotifications(notifs);
+
+
+
+
+      const newest = notifs[0];
+
+
+
+      if (newest && !newest.read && Date.now() - new Date(newest.timestamp).getTime() < 10000) {
+
+
+
+        setActiveToast(newest);
+
+
+
+      }
+
+
+
+    });
+
+
+
+
+    return () => {
+
+
+
+      unsubOccurrences();
+
+
+
+      unsubUsers();
+
+
+
+      unsubFeedbacks();
+
+
+
+      unsubNotifications();
+
+
+
+    };
+
+
+  }, [user]);
+
+  // Welcome Modal Logic
+  useEffect(() => {
+
+    if (currentUserProfile && !authLoading && notifications.length > 0) {
+
+
+
+      const unread = notifications.filter(n => !n.read);
+
+
+
+      if (unread.length > 0 && !sessionStorage.getItem('welcomeShown')) {
+
+
+
+        setShowWelcomeModal(true);
+
+
+
+        sessionStorage.setItem('welcomeShown', 'true');
+
+
+
+      }
+
+
+
+    }
+
+
+  }, [currentUserProfile, authLoading, notifications]);
+
+  // --- ACTIONS ---
+  const handleAddOccurrence = async (data: Occurrence) => { // Corrigido: função definida e async
+    if (!currentUserProfile) return; // Movido para dentro da função
+
+    try {
+      let uniqueId = '';
+      const year = new Date().getFullYear().toString().substr(-2);
+      const areaAbbr = getAreaAbbreviation(data.area);
+
+      await runTransaction(db, async (transaction) => {
+        const counterRef = doc(db, 'counters', 'occurrences');
+        const counterDoc = await transaction.get(counterRef);
+        let nextId = 1;
+        if (counterDoc.exists()) {
+          nextId = counterDoc.data().count + 1;
+        }
+        transaction.set(counterRef, { count: nextId });
+        uniqueId = `${String(nextId).padStart(3, '0')}-${year}-${areaAbbr}`;
+      });
+
+      const newOccurrenceData = {
+        ...data,
+        timestamp: new Date().toISOString(),
+        status: Status.Aberto,
+        createdBy: currentUserProfile.uid,
+        creatorName: currentUserProfile.name,
+        uniqueId: uniqueId,
+        updatesLog: []
+      };
+
+      const docRef = await addDoc(collection(db, 'occurrences'), newOccurrenceData);
+      const addedOccurrence = { id: docRef.id, ...newOccurrenceData } as Occurrence;
+
+      setNewOccurrence(addedOccurrence);
+      setIsShareModalOpen(true);
+
+      const managers = users.filter(u =>
+        (u.role === Role.Gestor && u.allowedAreas?.includes(data.area)) ||
+        u.role === Role.Admin ||
+        u.role === Role.Diretor
+      );
+
+      const batch = writeBatch(db);
+      managers.forEach(manager => {
+        if (manager.uid === currentUserProfile.uid) return;
+        const notifRef = doc(collection(db, 'notifications'));
+        batch.set(notifRef, {
+          recipientId: manager.uid,
+          title: 'Nova Tarefa Registrada',
+          message: `${currentUserProfile.name} registrou uma nova tarefa para ${data.area}: ${data.title}`,
           timestamp: new Date().toISOString(),
-
-
-
           read: false,
+          type: 'new',
+          occurrenceId: docRef.id
+        });
+      });
+      await batch.commit();
+
+    } catch (error) {
+      console.error("Error adding occurrence: ", error);
+      alert("Erro ao adicionar tarefa. Tente novamente.");
+    }
+  }; // Fim da função handleAddOccurrence
+
+  const handleUpdateOccurrence = async (occurrenceId: string, updates: Partial<Omit<Occurrence, 'id'>>) => {
+
+    try {
 
 
 
-          type: 'update',
+      const docRef = doc(db, 'occurrences', occurrenceId);
 
 
 
-          occurrenceId: occurrenceId
+      await updateDoc(docRef, updates);
+
+
+
+
+      if (updates.status && currentUserProfile) {
+
+
+
+        const occ = occurrences.find(o => o.id === occurrenceId);
+
+
+
+        if (occ && occ.createdBy !== currentUserProfile.uid) {
+
+
+
+          const creatorNotifRef = doc(collection(db, 'notifications'));
+
+
+
+          const creatorUser = users.find(u => u.uid === occ.createdBy);
+
+
+
+          if (creatorUser) {
+
+
+
+            await setDoc(creatorNotifRef, {
+
+
+
+              recipientId: occ.createdBy,
+
+
+
+              title: 'Atualização de Tarefa',
+
+
+
+              message: `Sua tarefa "${occ.title}" foi atualizada para: ${updates.status} por ${currentUserProfile.name}`,
+
+
+
+              timestamp: new Date().toISOString(),
+
+
+
+              read: false,
+
+
+
+              type: 'update',
+
+
+
+              occurrenceId: occurrenceId
+
+
+
+            });
+
+
+
+          }
+
+
+
+        }
+
+
+
+      }
+
+
+
+    } catch (error) {
+
+
+
+      console.error("Error updating occurrence: ", error);
+
+
+
+      alert("Erro ao atualizar tarefa.");
+
+
+
+    }
+
+
+  };
+
+  const handleMoveToTrash = async (id: string) => {
+
+    if (!currentUserProfile) return;
+
+
+
+    try {
+
+
+
+      const docRef = doc(db, 'occurrences', id);
+
+
+
+      await updateDoc(docRef, { deletedAt: new Date().toISOString() });
+
+
+
+    } catch (error) {
+
+
+
+      console.error("Error moving to trash:", error);
+
+
+
+      alert("Erro ao mover para lixeira.");
+
+
+
+    }
+
+
+  };
+
+  const handleRestoreFromTrash = async (id: string) => {
+
+    try {
+
+
+
+      const docRef = doc(db, 'occurrences', id);
+
+
+
+      await updateDoc(docRef, { deletedAt: deleteField() });
+
+
+
+    } catch (error) {
+
+
+
+      console.error("Error restoring:", error);
+
+
+
+      alert("Erro ao restaurar tarefa.");
+
+
+
+    }
+
+
+  };
+
+  const handleDeleteForever = async (id: string) => {
+
+    try {
+
+
+
+      await deleteDoc(doc(db, 'occurrences', id));
+
+
+
+    } catch (error) {
+
+
+
+      console.error("Error deleting forever:", error);
+
+
+
+      alert("Erro ao excluir permanentemente.");
+
+
+
+    }
+
+
+  };
+
+  const handleInviteUser = async (inviteData: { email: string; whatsapp?: string; allowedAreas: Area[]; role: Role; invitedBy: string; name?: string }) => {
+
+    try {
+
+
+
+      const q = query(collection(db, 'users'), where('email', '==', inviteData.email));
+
+
+
+      const snapshot = await getDocs(q);
+
+
+
+
+      const batch = writeBatch(db);
+
+
+
+
+      if (!snapshot.empty) {
+
+
+
+        snapshot.forEach(doc => {
+
+
+
+          batch.delete(doc.ref);
 
 
 
@@ -737,153 +739,398 @@ try {
 
 
 
+
+      const newDocRef = doc(collection(db, 'users'));
+
+
+
+      const newId = newDocRef.id;
+
+
+
+
+      batch.set(newDocRef, {
+
+
+
+        ...inviteData,
+
+
+
+        status: 'Pendente',
+
+
+
+        id: newId,
+
+
+
+        uid: newId
+
+
+
+      });
+
+
+
+
+      await batch.commit();
+
+
+
+      return newId;
+
+
+
+    } catch (error) {
+
+
+
+      console.error("Error inviting user: ", error);
+
+
+
+      alert("Erro ao criar convite. Verifique o console.");
+
+
+
+      return null;
+
+
+
+    }
+
+
+  };
+
+  const handleUpdateUser = async (userId: string, data: Partial) => {
+
+    try {
+
+
+
+      const userRef = doc(db, 'users', userId);
+
+
+
+      await updateDoc(userRef, data);
+
+
+
+    } catch (error) {
+
+
+
+      console.error("Error updating user:", error);
+
+
+
+      alert("Erro ao atualizar usuário.");
+
+
+
+    }
+
+
+  };
+
+  const handleRequestDeleteUser = async (userId: string) => {
+
+    if (!userId) {
+
+
+
+      console.error("Invalid User ID for deletion");
+
+
+
+      return;
+
+
+
     }
 
 
 
-  }
+    try {
 
 
 
-} catch (error) {
+      await deleteDoc(doc(db, 'users', userId));
 
 
 
-  console.error("Error updating occurrence: ", error);
 
+      const batch = writeBatch(db);
 
 
-  alert("Erro ao atualizar tarefa.");
 
+      const qNotif = query(collection(db, 'notifications'), where('recipientId', '==', userId));
 
 
-}
 
+      const notifSnap = await getDocs(qNotif);
 
-};
 
-const handleMoveToTrash = async (id: string) => {
 
-if (!currentUserProfile) return;
+      notifSnap.forEach(d => batch.delete(d.ref));
 
 
 
-try {
+      await batch.commit();
 
 
 
-  const docRef = doc(db, 'occurrences', id);
+    } catch (error) {
 
 
 
-  await updateDoc(docRef, { deletedAt: new Date().toISOString() });
+      console.error("Error deleting user:", error);
 
 
 
-} catch (error) {
+      alert("Erro ao excluir usuário.");
 
 
 
-  console.error("Error moving to trash:", error);
+    }
 
 
+  };
 
-  alert("Erro ao mover para lixeira.");
+  const handleToggleUserBlock = async (targetUser: User) => {
 
+    const newStatus = targetUser.status === 'Bloqueado' ? 'Ativo' : 'Bloqueado';
 
 
-}
 
+    await handleUpdateUser(targetUser.id, { status: newStatus });
 
-};
 
-const handleRestoreFromTrash = async (id: string) => {
+  };
 
-try {
+  const handleSubmitFeedback = async (type: any, content: string) => {
 
+    if (!currentUserProfile) return;
 
 
-  const docRef = doc(db, 'occurrences', id);
 
+    try {
 
 
-  await updateDoc(docRef, { deletedAt: deleteField() });
 
+      await addDoc(collection(db, 'system_feedback'), {
 
 
-} catch (error) {
 
+        userId: currentUserProfile.uid,
 
 
-  console.error("Error restoring:", error);
 
+        userName: currentUserProfile.name,
 
 
-  alert("Erro ao restaurar tarefa.");
 
+        userRole: currentUserProfile.role,
 
 
-}
 
+        userAreas: currentUserProfile.allowedAreas,
 
-};
 
-const handleDeleteForever = async (id: string) => {
 
-try {
+        type,
 
 
 
-  await deleteDoc(doc(db, 'occurrences', id));
+        content,
 
 
 
-} catch (error) {
+        timestamp: new Date().toISOString(),
 
 
 
-  console.error("Error deleting forever:", error);
+        isRead: false
 
 
 
-  alert("Erro ao excluir permanentemente.");
+      });
 
 
 
-}
+      alert('Feedback enviado com sucesso! Obrigado.');
 
 
-};
 
-const handleInviteUser = async (inviteData: { email: string; whatsapp?: string; allowedAreas: Area[]; role: Role; invitedBy: string; name?: string }) => {
+      setIsFeedbackModalOpen(false);
 
-try {
 
 
+    } catch (error) {
 
-  const q = query(collection(db, 'users'), where('email', '==', inviteData.email));
 
 
+      console.error("Error sending feedback:", error);
 
-  const snapshot = await getDocs(q);
 
 
+      alert("Erro ao enviar feedback.");
 
 
-  const batch = writeBatch(db);
 
+    }
 
 
+  };
 
-  if (!snapshot.empty) {
+  const handleToggleFeedbackRead = async (id: string, currentStatus: boolean) => {
 
+    try {
 
 
-    snapshot.forEach(doc => {
 
+      await updateDoc(doc(db, 'system_feedback', id), { isRead: !currentStatus });
 
 
-      batch.delete(doc.ref);
+
+    } catch (e) { console.error(e); }
+
+
+  };
+
+  const handleReplyFeedback = async (id: string, text: string) => {
+
+    if (!currentUserProfile) return;
+
+
+
+    try {
+
+
+
+      const feedbackRef = doc(db, 'system_feedback', id);
+
+
+
+      const feedbackDoc = await getDoc(feedbackRef);
+
+
+
+      if (feedbackDoc.exists()) {
+
+
+
+        const currentComments = feedbackDoc.data().comments || [];
+
+
+
+        const newComment = {
+
+
+
+          author: currentUserProfile.name,
+
+
+
+          text: text,
+
+
+
+          timestamp: new Date().toISOString(),
+
+
+
+          isAdmin: true
+
+
+
+        };
+
+
+
+        await updateDoc(feedbackRef, { comments: [...currentComments, newComment] });
+
+
+
+      }
+
+
+
+    } catch(e) { console.error(e); }
+
+
+  };
+
+  const handleDeleteFeedback = async (id: string) => {
+
+    try {
+
+
+
+      await deleteDoc(doc(db, 'system_feedback', id));
+
+
+
+    } catch(e) { console.error(e); }
+
+
+  };
+
+  const handleResetCounters = async () => {
+
+    try {
+
+
+
+      await setDoc(doc(db, 'counters', 'occurrences'), { count: 0 });
+
+
+
+      alert("Contador de tarefas zerado com sucesso. A próxima tarefa será #001.");
+
+
+
+    } catch (e) {
+
+
+
+      console.error(e);
+
+
+
+      alert("Erro ao zerar contador.");
+
+
+
+    }
+
+
+  };
+
+  const handleMarkNotificationsRead = async () => {
+
+    if (!currentUserProfile) return;
+
+
+
+    const batch = writeBatch(db);
+
+
+
+    const unread = notifications.filter(n => !n.read);
+
+
+
+    unread.forEach(n => {
+
+
+
+      const ref = doc(db, 'notifications', n.id);
+
+
+
+      batch.update(ref, { read: true });
 
 
 
@@ -891,969 +1138,566 @@ try {
 
 
 
-  }
+    if (unread.length > 0) await batch.commit();
 
 
+  };
 
+  const handleSimulateRole = (role: Role | null) => {
 
-  const newDocRef = doc(collection(db, 'users'));
+    if (currentUserProfile?.role !== Role.Admin) return;
 
 
 
-  const newId = newDocRef.id;
+    setIsSimulating(!!role);
 
 
 
 
-  batch.set(newDocRef, {
+    if (role) {
 
 
 
-    ...inviteData,
+      setCurrentUserProfile(prev => prev ? { ...prev, role } : null);
 
 
 
-    status: 'Pendente',
+    } else {
 
 
 
-    id: newId,
+      if (realRole) {
 
 
 
-    uid: newId
+        setCurrentUserProfile(prev => prev ? { ...prev, role: realRole } : null);
 
 
 
-  });
+      }
 
 
 
+    }
 
-  await batch.commit();
 
+  };
 
+  if (authLoading) {
 
-  return newId;
+    return (
 
 
 
-} catch (error) {
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
 
 
 
-  console.error("Error inviting user: ", error);
+        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-trimais-blue"></div>
 
 
 
-  alert("Erro ao criar convite. Verifique o console.");
+      </div>
 
 
 
-  return null;
-
-
-
-}
-
-
-};
-
-const handleUpdateUser = async (userId: string, data: Partial) => {
-
-try {
-
-
-
-  const userRef = doc(db, 'users', userId);
-
-
-
-  await updateDoc(userRef, data);
-
-
-
-} catch (error) {
-
-
-
-  console.error("Error updating user:", error);
-
-
-
-  alert("Erro ao atualizar usuário.");
-
-
-
-}
-
-
-};
-
-const handleRequestDeleteUser = async (userId: string) => {
-
-if (!userId) {
-
-
-
-  console.error("Invalid User ID for deletion");
-
-
-
-  return;
-
-
-
-}
-
-
-
-try {
-
-
-
-  await deleteDoc(doc(db, 'users', userId));
-
-
-
-
-  const batch = writeBatch(db);
-
-
-
-  const qNotif = query(collection(db, 'notifications'), where('recipientId', '==', userId));
-
-
-
-  const notifSnap = await getDocs(qNotif);
-
-
-
-  notifSnap.forEach(d => batch.delete(d.ref));
-
-
-
-  await batch.commit();
-
-
-
-} catch (error) {
-
-
-
-  console.error("Error deleting user:", error);
-
-
-
-  alert("Erro ao excluir usuário.");
-
-
-
-}
-
-
-};
-
-const handleToggleUserBlock = async (targetUser: User) => {
-
-const newStatus = targetUser.status === 'Bloqueado' ? 'Ativo' : 'Bloqueado';
-
-
-
-await handleUpdateUser(targetUser.id, { status: newStatus });
-
-
-};
-
-const handleSubmitFeedback = async (type: any, content: string) => {
-
-if (!currentUserProfile) return;
-
-
-
-try {
-
-
-
-  await addDoc(collection(db, 'system_feedback'), {
-
-
-
-    userId: currentUserProfile.uid,
-
-
-
-    userName: currentUserProfile.name,
-
-
-
-    userRole: currentUserProfile.role,
-
-
-
-    userAreas: currentUserProfile.allowedAreas,
-
-
-
-    type,
-
-
-
-    content,
-
-
-
-    timestamp: new Date().toISOString(),
-
-
-
-    isRead: false
-
-
-
-  });
-
-
-
-  alert('Feedback enviado com sucesso! Obrigado.');
-
-
-
-  setIsFeedbackModalOpen(false);
-
-
-
-} catch (error) {
-
-
-
-  console.error("Error sending feedback:", error);
-
-
-
-  alert("Erro ao enviar feedback.");
-
-
-
-}
-
-
-};
-
-const handleToggleFeedbackRead = async (id: string, currentStatus: boolean) => {
-
-try {
-
-
-
-  await updateDoc(doc(db, 'system_feedback', id), { isRead: !currentStatus });
-
-
-
-} catch (e) { console.error(e); }
-
-
-};
-
-const handleReplyFeedback = async (id: string, text: string) => {
-
-if (!currentUserProfile) return;
-
-
-
-try {
-
-
-
-  const feedbackRef = doc(db, 'system_feedback', id);
-
-
-
-  const feedbackDoc = await getDoc(feedbackRef);
-
-
-
-  if (feedbackDoc.exists()) {
-
-
-
-    const currentComments = feedbackDoc.data().comments || [];
-
-
-
-    const newComment = {
-
-
-
-      author: currentUserProfile.name,
-
-
-
-      text: text,
-
-
-
-      timestamp: new Date().toISOString(),
-
-
-
-      isAdmin: true
-
-
-
-    };
-
-
-
-    await updateDoc(feedbackRef, { comments: [...currentComments, newComment] });
-
+    );
 
 
   }
 
+  if (registerId) {
 
-
-} catch(e) { console.error(e); }
-
-
-};
-
-const handleDeleteFeedback = async (id: string) => {
-
-try {
-
-
-
-  await deleteDoc(doc(db, 'system_feedback', id));
-
-
-
-} catch(e) { console.error(e); }
-
-
-};
-
-const handleResetCounters = async () => {
-
-try {
-
-
-
-  await setDoc(doc(db, 'counters', 'occurrences'), { count: 0 });
-
-
-
-  alert("Contador de tarefas zerado com sucesso. A próxima tarefa será #001.");
-
-
-
-} catch (e) {
-
-
-
-  console.error(e);
-
-
-
-  alert("Erro ao zerar contador.");
-
-
-
-}
-
-
-};
-
-const handleMarkNotificationsRead = async () => {
-
-if (!currentUserProfile) return;
-
-
-
-const batch = writeBatch(db);
-
-
-
-const unread = notifications.filter(n => !n.read);
-
-
-
-unread.forEach(n => {
-
-
-
-  const ref = doc(db, 'notifications', n.id);
-
-
-
-  batch.update(ref, { read: true });
-
-
-
-});
-
-
-
-if (unread.length > 0) await batch.commit();
-
-
-};
-
-const handleSimulateRole = (role: Role | null) => {
-
-if (currentUserProfile?.role !== Role.Admin) return;
-
-
-
-setIsSimulating(!!role);
-
-
-
-
-if (role) {
-
-
-
-  setCurrentUserProfile(prev => prev ? { ...prev, role } : null);
-
-
-
-} else {
-
-
-
-  if (realRole) {
-
-
-
-    setCurrentUserProfile(prev => prev ? { ...prev, role: realRole } : null);
-
+    return <RegistrationPage userIdToRegister={registerId} />;
 
 
   }
 
+  if (!user || !currentUserProfile) {
 
-
-}
-
-
-};
-
-if (authLoading) {
-
-return (
+    return (
 
 
 
-  <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <>
 
 
 
-    <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-trimais-blue"></div>
+        <LoginPage />
 
 
 
-  </div>
+        <div className="fixed bottom-4 right-4 opacity-50 hover:opacity-100">
 
 
 
-);
-
-
-}
-
-if (registerId) {
-
-return <RegistrationPage userIdToRegister={registerId} />;
-
-
-}
-
-if (!user || !currentUserProfile) {
-
-return (
+          <button
 
 
 
-  <>
+            onClick={() => setActiveView('admin')}
 
 
 
-    <LoginPage />
+            className="text-xs text-gray-300 hover:text-gray-500"
 
 
 
-    <div className="fixed bottom-4 right-4 opacity-50 hover:opacity-100">
+          >
 
 
 
-      <button 
+            Admin Setup
 
 
 
-        onClick={() => setActiveView('admin')}
+          </button>
 
 
 
-        className="text-xs text-gray-300 hover:text-gray-500"
+        </div>
 
 
 
-      >
+        {activeView === 'admin' && <div className="fixed inset-0 z-50 bg-white"><FirstAdminSetup onSetupComplete={() => setActiveView('dashboard')} /></div>}
 
 
 
-        Admin Setup
+      </>
 
 
 
-      </button>
+    );
+
+
+  }
+
+  return (
+
+    <div className="min-h-screen bg-gray-100 font-sans text-gray-900 pb-20">
+
+
+
+      <Header
+
+
+
+        activeView={activeView}
+
+
+
+        setActiveView={setActiveView}
+
+
+
+        currentUser={currentUserProfile}
+
+
+
+        realRole={realRole || Role.Gestor}
+
+
+
+        onSimulateRole={handleSimulateRole}
+
+
+
+        isSimulating={isSimulating}
+
+
+
+        onOpenFeedback={() => setIsFeedbackModalOpen(true)}
+
+
+
+        notifications={notifications}
+
+
+
+        onMarkNotificationsRead={handleMarkNotificationsRead}
+
+
+
+        onChangePassword={() => setIsChangePasswordModalOpen(true)}
+
+
+
+      />
+
+
+
+
+      <main className="container mx-auto px-4 md:px-6 py-6 max-w-7xl">
+
+
+
+        {activeView === 'dashboard' && (
+
+
+
+          <div className="animate-fade-in">
+
+
+
+            <Dashboard
+
+
+
+              occurrences={occurrences.filter(o => !o.deletedAt)}
+
+
+
+              users={users}
+
+
+
+              currentUser={currentUserProfile}
+
+
+
+              onMoveToTrash={handleMoveToTrash}
+
+
+
+            />
+
+
+
+          </div>
+
+
+
+        )}
+
+
+
+
+        {activeView === 'form' && (
+
+
+
+          <div className="animate-slide-down">
+
+
+
+            <OccurrenceForm onAddOccurrence={handleAddOccurrence} />
+
+
+
+          </div>
+
+
+
+        )}
+
+
+
+
+        {activeView === 'myTasks' && (
+
+
+
+          <div className="animate-fade-in">
+
+
+
+            <MyTasks
+
+
+
+              occurrences={occurrences.filter(o => !o.deletedAt)}
+
+
+
+              currentUser={currentUserProfile}
+
+
+
+              users={users}
+
+
+
+              updateOccurrence={handleUpdateOccurrence}
+
+
+
+              onMoveToTrash={handleMoveToTrash}
+
+
+
+            />
+
+
+
+          </div>
+
+
+
+        )}
+
+
+
+
+        {activeView === 'admin' && currentUserProfile.role === Role.Admin && (
+
+
+
+          <div className="animate-fade-in">
+
+
+
+            <AdminPanel
+
+
+
+              users={users}
+
+
+
+              currentUser={currentUserProfile}
+
+
+
+              onInviteUser={handleInviteUser}
+
+
+
+              onUpdateUser={handleUpdateUser}
+
+
+
+              onRequestDeleteUser={handleRequestDeleteUser}
+
+
+
+              onToggleUserBlock={handleToggleUserBlock}
+
+
+
+              feedbacks={feedbacks}
+
+
+
+              onToggleFeedbackRead={handleToggleFeedbackRead}
+
+
+
+              onReplyFeedback={handleReplyFeedback}
+
+
+
+              onDeleteFeedback={handleDeleteFeedback}
+
+
+
+              onResetCounters={handleResetCounters}
+
+
+
+            />
+
+
+
+          </div>
+
+
+
+        )}
+
+
+
+
+        {activeView === 'trash' && (
+
+
+
+          <div className="animate-fade-in">
+
+
+
+            <TrashPanel
+
+
+
+              occurrences={occurrences.filter(o => o.deletedAt)}
+
+
+
+              onRestore={handleRestoreFromTrash}
+
+
+
+              onDeleteForever={handleDeleteForever}
+
+
+
+            />
+
+
+
+          </div>
+
+
+
+        )}
+
+
+
+      </main>
+
+
+
+
+      {isShareModalOpen && newOccurrence && (
+
+
+
+        <ShareModal
+
+
+
+          occurrence={newOccurrence}
+
+
+
+          onClose={() => { setIsShareModalOpen(false); setActiveView('myTasks'); }}
+
+
+
+        />
+
+
+
+      )}
+
+
+
+
+      <FeedbackModal
+
+
+
+        isOpen={isFeedbackModalOpen}
+
+
+
+        onClose={() => setIsFeedbackModalOpen(false)}
+
+
+
+        onSubmit={handleSubmitFeedback}
+
+
+
+      />
+
+
+
+
+      <ChangePasswordModal
+
+
+
+        isOpen={isChangePasswordModalOpen}
+
+
+
+        onClose={() => setIsChangePasswordModalOpen(false)}
+
+
+
+        user={currentUserProfile}
+
+
+
+      />
+
+
+
+
+      {activeToast && (
+
+
+
+        <NotificationToast
+
+
+
+          notification={activeToast}
+
+
+
+          onClose={() => setActiveToast(null)}
+
+
+
+          onView={() => { setActiveToast(null); setActiveView('myTasks'); }}
+
+
+
+        />
+
+
+
+      )}
+
+
+
+
+      <WelcomeSummaryModal
+
+
+
+        isOpen={showWelcomeModal}
+
+
+
+        onClose={() => setShowWelcomeModal(false)}
+
+
+
+        unreadNotifications={notifications.filter(n => !n.read)}
+
+
+
+        userName={currentUserProfile.name}
+
+
+
+      />
+
+
+
+
+      {showInstallGuide && (
+
+
+
+        <InstallGuidePage onContinue={() => {
+
+
+
+          setShowInstallGuide(false);
+
+
+
+          localStorage.setItem('installGuideSeen', 'true');
+
+
+
+        }} />
+
+
+
+      )}
+
 
 
 
     </div>
 
 
-
-    {activeView === 'admin' && <div className="fixed inset-0 z-50 bg-white"><FirstAdminSetup onSetupComplete={() => setActiveView('dashboard')} /></div>}
-
-
-
-  </>
-
-
-
-);
-
-
-}
-
-return (
-
-<div className="min-h-screen bg-gray-100 font-sans text-gray-900 pb-20">
-
-
-
-  <Header 
-
-
-
-    activeView={activeView} 
-
-
-
-    setActiveView={setActiveView} 
-
-
-
-    currentUser={currentUserProfile}
-
-
-
-    realRole={realRole || Role.Gestor}
-
-
-
-    onSimulateRole={handleSimulateRole}
-
-
-
-    isSimulating={isSimulating}
-
-
-
-    onOpenFeedback={() => setIsFeedbackModalOpen(true)}
-
-
-
-    notifications={notifications}
-
-
-
-    onMarkNotificationsRead={handleMarkNotificationsRead}
-
-
-
-    onChangePassword={() => setIsChangePasswordModalOpen(true)}
-
-
-
-  />
-
-
-
-
-  <main className="container mx-auto px-4 md:px-6 py-6 max-w-7xl">
-
-
-
-    {activeView === 'dashboard' && (
-
-
-
-      <div className="animate-fade-in">
-
-
-
-        <Dashboard 
-
-
-
-          occurrences={occurrences.filter(o => !o.deletedAt)} 
-
-
-
-          users={users} 
-
-
-
-          currentUser={currentUserProfile} 
-
-
-
-          onMoveToTrash={handleMoveToTrash}
-
-
-
-        />
-
-
-
-      </div>
-
-
-
-    )}
-
-
-
-
-    {activeView === 'form' && (
-
-
-
-      <div className="animate-slide-down">
-
-
-
-        <OccurrenceForm onAddOccurrence={handleAddOccurrence} />
-
-
-
-      </div>
-
-
-
-    )}
-
-
-
-
-    {activeView === 'myTasks' && (
-
-
-
-      <div className="animate-fade-in">
-
-
-
-        <MyTasks 
-
-
-
-          occurrences={occurrences.filter(o => !o.deletedAt)} 
-
-
-
-          currentUser={currentUserProfile} 
-
-
-
-          users={users}
-
-
-
-          updateOccurrence={handleUpdateOccurrence} 
-
-
-
-          onMoveToTrash={handleMoveToTrash}
-
-
-
-        />
-
-
-
-      </div>
-
-
-
-    )}
-
-
-
-
-    {activeView === 'admin' && currentUserProfile.role === Role.Admin && (
-
-
-
-      <div className="animate-fade-in">
-
-
-
-        <AdminPanel 
-
-
-
-          users={users} 
-
-
-
-          currentUser={currentUserProfile}
-
-
-
-          onInviteUser={handleInviteUser}
-
-
-
-          onUpdateUser={handleUpdateUser}
-
-
-
-          onRequestDeleteUser={handleRequestDeleteUser}
-
-
-
-          onToggleUserBlock={handleToggleUserBlock}
-
-
-
-          feedbacks={feedbacks}
-
-
-
-          onToggleFeedbackRead={handleToggleFeedbackRead}
-
-
-
-          onReplyFeedback={handleReplyFeedback}
-
-
-
-          onDeleteFeedback={handleDeleteFeedback}
-
-
-
-          onResetCounters={handleResetCounters}
-
-
-
-        />
-
-
-
-      </div>
-
-
-
-    )}
-
-
-
-
-    {activeView === 'trash' && (
-
-
-
-      <div className="animate-fade-in">
-
-
-
-        <TrashPanel 
-
-
-
-          occurrences={occurrences.filter(o => o.deletedAt)} 
-
-
-
-          onRestore={handleRestoreFromTrash}
-
-
-
-          onDeleteForever={handleDeleteForever}
-
-
-
-        />
-
-
-
-      </div>
-
-
-
-    )}
-
-
-
-  </main>
-
-
-
-
-  {isShareModalOpen && newOccurrence && (
-
-
-
-    <ShareModal 
-
-
-
-      occurrence={newOccurrence} 
-
-
-
-      onClose={() => { setIsShareModalOpen(false); setActiveView('myTasks'); }} 
-
-
-
-    />
-
-
-
-  )}
-
-
-
-
-  <FeedbackModal 
-
-
-
-    isOpen={isFeedbackModalOpen} 
-
-
-
-    onClose={() => setIsFeedbackModalOpen(false)} 
-
-
-
-    onSubmit={handleSubmitFeedback}
-
-
-
-  />
-
-
-
-
-  <ChangePasswordModal
-
-
-
-    isOpen={isChangePasswordModalOpen}
-
-
-
-    onClose={() => setIsChangePasswordModalOpen(false)}
-
-
-
-    user={currentUserProfile}
-
-
-
-  />
-
-
-
-
-  {activeToast && (
-
-
-
-    <NotificationToast 
-
-
-
-      notification={activeToast} 
-
-
-
-      onClose={() => setActiveToast(null)}
-
-
-
-      onView={() => { setActiveToast(null); setActiveView('myTasks'); }}
-
-
-
-    />
-
-
-
-  )}
-
-
-
-
-  <WelcomeSummaryModal 
-
-
-
-    isOpen={showWelcomeModal}
-
-
-
-    onClose={() => setShowWelcomeModal(false)}
-
-
-
-    unreadNotifications={notifications.filter(n => !n.read)}
-
-
-
-    userName={currentUserProfile.name}
-
-
-
-  />
-
-
-
-
-  {showInstallGuide && (
-
-
-
-    <InstallGuidePage onContinue={() => {
-
-
-
-      setShowInstallGuide(false);
-
-
-
-      localStorage.setItem('installGuideSeen', 'true');
-
-
-
-    }} />
-
-
-
-  )}
-
-
-
-
-</div>
-
-
-);
+  );
 };
 
 export default App;
