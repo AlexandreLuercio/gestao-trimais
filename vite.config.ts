@@ -15,7 +15,10 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: 'dist',
-      sourcemap: mode === 'production' ? false : true // Sourcemap só em dev
+      sourcemap: mode === 'production' ? false : true, // Sourcemap só em dev
+      rollupOptions: { // <--- ADICIONE ESTA SEÇÃO
+        external: [/^@firebase\/.*/], // <--- E ESTA LINHA: Garante que todos os módulos do Firebase sejam tratados como externos
+      }
     }
   }
 })
