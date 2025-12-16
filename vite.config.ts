@@ -17,7 +17,9 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
       sourcemap: mode === 'production' ? false : true, // Sourcemap só em dev
       rollupOptions: {
-        external: [/^@firebase\/.*/, /^@google\/.*/], // <--- AQUI ESTÁ A MUDANÇA! Removido 'react-router-dom'
+        // MUITO IMPORTANTE: APENAS ESTES DOIS DEVEM ESTAR AQUI.
+        // O 'react-router-dom' DEVE SER REMOVIDO CASO APAREÇA.
+        external: [/^@firebase\/.*/, /^@google\/.*/],
       }
     }
   }
