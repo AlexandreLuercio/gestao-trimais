@@ -1,7 +1,7 @@
-import { initializeApp } from '@firebase/app';
-import { getAuth } from '@firebase/auth';
-import { getFirestore } from '@firebase/firestore';
-import { getStorage } from '@firebase/storage';
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 // Fix para resolve no build Vercel - 09/12/2025 (commit forçado v3)
 const firebaseConfig = {
 apiKey: process.env.VITE_FIREBASE_API_KEY,
