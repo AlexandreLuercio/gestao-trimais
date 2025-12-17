@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { auth } from '../firebase/config';
-import { signInWithEmailAndPassword } from '@firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth'; // <-- Corrigido aqui
 import { APP_VERSION } from '../App';
 
 interface LoginPageProps {
