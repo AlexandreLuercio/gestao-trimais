@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { auth, db } from '../firebase/config';
-import { createUserWithEmailAndPassword } from '@firebase/auth';
+import { createUserWithEmailAndPassword } from 'firebase/auth'; // <-- Corrigido aqui
 import { doc, setDoc } from '@firebase/firestore';
 import { Role, Area } from '../types';
 
