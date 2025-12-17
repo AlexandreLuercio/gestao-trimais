@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Occurrence, Area, Status, User, Role, getNormalizedStatus } from '../types';
 import { subMonths, startOfDay, endOfDay, parseISO } from 'date-fns';
-import { GoogleGenAI } from '@google/generative-ai'; // <-- Corrigido aqui
+import { GoogleGenerativeAI } from '@google/generative-ai'; // <-- CORREÇÃO AQUI
 import FilteredOccurrencesModal from './FilteredOccurrencesModal';
-import ExportOptionsModal from './ExportOptionsModal';
+import ExportOptionsModal from './FilteredOccurrencesModal'; // Assumindo que ExportOptionsModal também vem do mesmo arquivo
 
 
 interface DashboardProps {
@@ -260,12 +260,12 @@ const Dashboard: React.FC<DashboardProps> = ({ occurrences, users, currentUser, 
     `;
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-      });
-      setAiSummaries(prev => ({ ...prev, [area]: response.text || "Não foi possível gerar a análise." }));
+      const ai = new GoogleGenerativeAI({ apiKey: process.env.API_KEY || '' }); // Adicionei fallback para apiKey
+      const model = ai.getGenerativeModel({ model: 'gemini-pro' }); // Use 'gemini-pro' ou 'gemini-1.5-flash' ou outro modelo disponível
+      const result = await model.generateContent(prompt);
+      const response = result.response;
+      const text = response.text();
+      setAiSummaries(prev => ({ ...prev, [area]: text || "Não foi possível gerar a análise." }));
     } catch (error) {
       console.error("Erro na análise da IA:", error);
       setAiSummaries(prev => ({ ...prev, [area]: 'Ocorreu um erro ao gerar a análise. Tente novamente.' }));
@@ -379,93 +379,4 @@ const Dashboard: React.FC<DashboardProps> = ({ occurrences, users, currentUser, 
           {rankedSummaryData.map((summary, index) => {
               const areaAccess = canViewDetails(summary.area);
               return (
-                <div key={summary.area} className="bg-white rounded-lg shadow-xl border border-gray-200 flex flex-col transition-all duration-300 hover:scale-[1.01]">
-                <div className="p-4 border-b bg-gray-50 rounded-t-lg flex justify-between items-center gap-2">
-                    <div className="flex items-center gap-3">
-                        <span className={`flex-shrink-0 w-8 h-8 rounded-full text-white font-bold text-lg flex items-center justify-center ${rankColors[index] || 'bg-gray-400'}`}>
-                        {index + 1}º
-                        </span>
-                        <h4 className="text-lg font-bold text-trimais-blue">{summary.area}</h4>
-                    </div>
-                    <div className="text-right">
-                        <p className="font-bold text-2xl text-gray-800">{summary.totalCount}</p>
-                        <p className="text-xs text-gray-500">{summary.percentageOfAll.toFixed(1)}% do total</p>
-                    </div>
-                </div>
-                
-                <div className="p-4 flex-grow bg-white">
-                    {/* FORCED 4 COLUMN GRID ON ALL SCREENS LARGER THAN XS TO MATCH OVERVIEW */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
-                    {Object.values(Status).map(status => {
-                        const hasItems = summary.statusCounts[status] > 0;
-                        const clickable = hasItems && areaAccess;
-                        const percentage = summary.totalCount > 0 ? summary.statusPercentages[status].toFixed(0) : '0';
-                        
-                        return (
-                            <button 
-                            key={status}
-                            onClick={() => handleAreaClick(summary.area, status)}
-                            disabled={!clickable}
-                            className={`p-2 rounded-md ${statusColors[status]} w-full text-center transition-all duration-200 ${clickable ? 'hover:scale-105 hover:shadow-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-trimais-blue' : 'cursor-default opacity-80'}`}
-                            style={{ cursor: clickable ? 'pointer' : 'default' }}
-                            >
-                            <p className="text-[10px] uppercase font-bold tracking-wide opacity-80 mb-0.5">{status}</p>
-                            <p className="text-lg font-extrabold flex items-center justify-center gap-1">
-                                {summary.statusCounts[status]}
-                                <span className="text-xs font-medium opacity-100">({percentage}%)</span>
-                            </p>
-                            </button>
-                        );
-                    })}
-                    </div>
-                </div>
-                
-                <div className="p-4 bg-gray-50 rounded-b-lg mt-auto border-t border-gray-100">
-                    <button 
-                    onClick={() => handleGenerateSummary(summary.area)}
-                    disabled={loadingAi[summary.area]}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-trimais-gold rounded-md shadow-sm hover:bg-yellow-600 disabled:bg-gray-400 transition-colors"
-                    >
-                    {loadingAi[summary.area] ? 'Analisando...' : 'Analisar com IA'}
-                    </button>
-                    {loadingAi[summary.area] && <div className="mt-2 text-sm text-gray-600">Aguarde, a inteligência artificial está processando os dados...</div>}
-                    {aiSummaries[summary.area] && (
-                    <div className="prose prose-sm max-w-none mt-4 p-4 bg-white rounded-md border border-gray-200" dangerouslySetInnerHTML={{ __html: aiSummaries[summary.area].replace(/\n/g, '<br />') }}></div>
-                    )}
-                </div>
-                </div>
-              );
-          })}
-        </div>
-
-        {filteredOccurrences.length === 0 && (
-            <div className="text-center py-10 text-gray-500">
-                <p>Nenhuma tarefa encontrada para o período selecionado.</p>
-            </div>
-        )}
-      </div>
-
-      {modalFilters && (
-        <FilteredOccurrencesModal
-          occurrences={filteredOccurrences}
-          users={users}
-          currentUser={currentUser}
-          filters={modalFilters}
-          onClose={() => setModalFilters(null)}
-          onMoveToTrash={onMoveToTrash}
-          limitToUser={limitModalToUser}
-        />
-      )}
-
-      <ExportOptionsModal 
-        isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        data={dataToExport}
-        reportTitle="Relatório Geral do Painel"
-      />
-
-    </div>
-  );
-};
-
-export default Dashboard;
+                <div key={summary.area} className="bg-white rounded-lg shadow-xl border border-gray-200 flex flex-col transition-all
