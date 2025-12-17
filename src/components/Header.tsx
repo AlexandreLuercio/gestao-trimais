@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { User, Role, AppNotification } from '../types';
 import { View, APP_VERSION } from '../App';
 import { auth } from '../firebase/config';
-import { signOut } from '@firebase/auth';
+import { signOut } from 'firebase/auth'; // <-- Corrigido aqui
 import NotificationCenter from './NotificationCenter';
 
 interface HeaderProps {
