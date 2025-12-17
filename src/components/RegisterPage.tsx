@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { auth, db } from '../firebase/config';
-import { createUserWithEmailAndPassword } from '@firebase/auth';
-import { doc, setDoc } from '@firebase/firestore';
+import { createUserWithEmailAndPassword } from 'firebase/auth'; // <-- Corrigido aqui
+import { doc, setDoc } from 'firebase/firestore';
 
 const RegisterPage: React.FC = () => {
   const [email, setEmail] = useState('');
