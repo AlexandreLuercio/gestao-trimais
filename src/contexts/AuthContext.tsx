@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { User, AppNotification } from '../types'; // Importa o tipo User e AppNotification
 import { auth, db } from '../firebase/config';
-import { onAuthStateChanged, User as FirebaseUser } from '@firebase/auth';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth'; // <-- Corrigido aqui
 import { doc, getDoc } from '@firebase/firestore';
 
 interface AuthContextType {
