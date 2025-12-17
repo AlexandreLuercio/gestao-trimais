@@ -16,10 +16,10 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       sourcemap: mode === 'production' ? false : true, // Sourcemap só em dev
+      // AQUI ESTAVA O PROBLEMA: A PROPRIEDADE 'external' FOI REMOVIDA
       rollupOptions: {
-        // MUITO IMPORTANTE: APENAS ESTES DOIS DEVEM ESTAR AQUI.
-        // O 'react-router-dom' DEVE SER REMOVIDO CASO APAREÇA.
-        external: [/^@firebase\/.*/, /^@google\/.*/],
+        // Agora o Rollup vai empacotar corretamente o Firebase e o Google AI
+        // Não é mais necessário especificar 'external' para essas bibliotecas aqui
       }
     }
   }
