@@ -1,7 +1,6 @@
-
 import React, { useState, useRef } from 'react';
 import { Occurrence, Area } from '../types';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI } from '@google/generative-ai'; // <-- Corrigido aqui
 
 interface OccurrenceFormProps {
   onAddOccurrence: (occurrence: Omit<Occurrence, 'id' | 'timestamp' | 'status' | 'uniqueId' | 'createdBy' | 'creatorName' | 'updatesLog'>) => Promise<void>;
@@ -239,7 +238,7 @@ const OccurrenceForm: React.FC<OccurrenceFormProps> = ({ onAddOccurrence }) => {
           <div className="mt-2 p-4 border-2 border-gray-300 border-dashed rounded-md text-center">
             {!isRecording && !audioURL && (
               <button type="button" onClick={startRecording} className="mx-auto flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-trimais-blue rounded-md shadow-sm hover:bg-blue-900">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93V14a1 1 0 00-1-1H4a1 1 0 00-1 1v.93a7.001 7.001 0 005.93 6.918 1 1 0 00.14.002 1 1 0 00.93-.998V15a1 1 0 00-1-1h-1v-.07A5.002 5.002 0 0111 14.93z" clipRule="evenodd" /></svg>
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93V14a1 1 0 00-1-1H4a1 1 0 00-1 1v.93a7.001 7.001 0 005.93 6.918 1 1 0 00.14.002 1 1 0 00.93-.998V15a1 1 0 00-1-1h-1v-.07A5.002 5 0 0111 14.93z" clipRule="evenodd" /></svg>
                 Gravar Áudio
               </button>
             )}
@@ -290,16 +289,6 @@ const OccurrenceForm: React.FC<OccurrenceFormProps> = ({ onAddOccurrence }) => {
 
               </div>
               <p className="text-xs text-gray-500">PNG, JPG, GIF até 10MB</p>
-            </div>
-          </div>
-          {photos.length > 0 && (
-            <div className="mt-4 grid grid-cols-3 sm:grid-cols-5 gap-2">
-              {photos.map((photo, index) => (
-                <div key={index} className="relative group">
-                  <img src={photo} alt={`preview ${index}`} className="h-24 w-full object-cover rounded-md" />
-                  <button type="button" onClick={() => removePhoto(index)} className="absolute top-0 right-0 m-1 bg-red-600 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">&times;</button>
-                </div>
-              ))}
             </div>
           )}
         </div>
