@@ -7,17 +7,16 @@ const OccurrenceForm = () => {
   const showImagePreview = true; // Substitua pela sua lógica real
 
   return (
-    <div className="p-4 bg-white shadow rounded-lg"> {/* Supondo que este seja o div principal do componente */}
-      <form> {/* A tag <form> que envolve todo o conteúdo do formulário */}
+    <div className="p-4 bg-white shadow rounded-lg">
+      <form>
         {/* ... Seu conteúdo JSX anterior até a linha 290 ... */}
 
         {showImagePreview && (
           <div className="col-span-full">
-            <div className="image-display-area"> {/* Div que se fechava na linha 292 */}
+            <div className="image-display-area">
               <p className="text-xs text-gray-500">PNG, JPG, GIF até 10MB</p>
             </div>
-            {/* O `)` aqui fecha a expressão condicional `showImagePreview && (...)`. */}
-          </div> {/* Este div que se fechava na linha 294 */}
+          </div>
         )}
 
         <div className="flex items-center justify-end space-x-4 pt-4">
@@ -30,8 +29,8 @@ const OccurrenceForm = () => {
           </button>
         </div>
 
-      </form> {/* Esta </form> fecha o formulário que foi aberto. */}
-    </div> {/* Este </div> fecha o div principal do componente. */}
+      </form>
+    </div>
   );
 };
 
