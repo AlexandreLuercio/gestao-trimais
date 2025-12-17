@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { auth, db } from '../firebase/config';
-import { updatePassword } from '@firebase/auth';
-import { doc, updateDoc } from '@firebase/firestore';
+import { updatePassword } from 'firebase/auth'; // <-- Corrigido aqui
+import { doc, updateDoc } from 'firebase/firestore';
 import { User } from '../types';
 
 interface ChangePasswordModalProps {
