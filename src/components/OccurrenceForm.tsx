@@ -17,8 +17,7 @@ const OccurrenceForm = () => {
               <p className="text-xs text-gray-500">PNG, JPG, GIF até 10MB</p>
             </div>
             {/* O `)` aqui fecha a expressão condicional `showImagePreview && (...)`. */}
-            {/* O `}` extra na linha 293 foi removido. */}
-          </div> // Este div que se fechava na linha 294
+          </div> {/* Este div que se fechava na linha 294 */}
         )}
 
         <div className="flex items-center justify-end space-x-4 pt-4">
