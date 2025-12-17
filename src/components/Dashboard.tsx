@@ -1,8 +1,7 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Occurrence, Area, Status, User, Role, getNormalizedStatus } from '../types';
 import { subMonths, startOfDay, endOfDay, parseISO } from 'date-fns';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI } from '@google/generative-ai'; // <-- Corrigido aqui
 import FilteredOccurrencesModal from './FilteredOccurrencesModal';
 import ExportOptionsModal from './ExportOptionsModal';
 
