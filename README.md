@@ -4,8 +4,6 @@
 
 # Run and deploy your AI Studio app
 
-Atualização para fix npm install – versão 2.0.1
-
 This contains everything you need to run your app locally.
 
 View your app in AI Studio: https://ai.studio/apps/drive/1pa106mv6vuIwAcsiV5-AzH0_C8g71x3B
@@ -20,7 +18,3 @@ View your app in AI Studio: https://ai.studio/apps/drive/1pa106mv6vuIwAcsiV5-AzH
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
-"Atualização para limpar cache – 09/12/2025"
-"// Update 09/12"
-Update para fixar Firebase config - commit forçado (09/12/2025)
-Teste para Vercel – 17:10

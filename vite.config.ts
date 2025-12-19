@@ -1,26 +1,29 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'path'
+import { fileURLToPath } from 'url'
 
-// https://vitejs.dev/config/
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
+  // Fixed: Explicit casting of process to any to resolve TypeScript property error in config environment
+  const env = loadEnv(mode, (process as any).cwd(), '');
+  
   return {
     plugins: [react()],
-    base: '/', // Essencial para Vercel (caminhos corretos em deploy)
     define: {
-      'process.env.API_KEY': JSON.stringify(env.API_KEY)
+      // Obrigatório para o SDK do Gemini conforme diretrizes
+      'process.env.API_KEY': JSON.stringify(env.VITE_API_KEY || env.API_KEY || ""),
     },
-    server: {
-      port: 3000 // Para testes locais consistentes
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './'),
+      },
     },
     build: {
       outDir: 'dist',
-      sourcemap: mode === 'production' ? false : true, // Sourcemap só em dev
-      // AQUI ESTAVA O PROBLEMA: A PROPRIEDADE 'external' FOI REMOVIDA
-      rollupOptions: {
-        // Agora o Rollup vai empacotar corretamente o Firebase e o Google AI
-        // Não é mais necessário especificar 'external' para essas bibliotecas aqui
-      }
+      emptyOutDir: true,
     }
   }
 })
