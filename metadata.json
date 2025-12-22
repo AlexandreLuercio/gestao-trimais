@@ -1,8 +1,0 @@
-{
-  "name": "Gestão de Tarefas - Trimais Places",
-  "description": "Sistema de gestão de ocorrências e manutenção para o Trimais Places.",
-  "requestFramePermissions": [
-    "camera",
-    "microphone"
-  ]
-}
