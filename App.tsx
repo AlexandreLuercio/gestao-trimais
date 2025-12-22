@@ -37,7 +37,7 @@ const App: React.FC = () => {
   const [currentUserProfile, setCurrentUserProfile] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   
-  // ESTADOS INICIALIZADOS COM ARRAY VAZIO (OBRIGATÓRIO)
+  // 1. INICIALIZAÇÃO SEGURA: Sempre arrays vazios
   const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [feedbacks, setFeedbacks] = useState<SystemFeedback[]>([]);
@@ -74,11 +74,13 @@ const App: React.FC = () => {
           console.error("Erro ao carregar perfil:", e);
         }
       } else {
+        // Limpeza no logout
         setUser(null);
         setCurrentUserProfile(null);
         setRealRole(null);
         setOccurrences([]);
         setUsers([]);
+        setFeedbacks([]);
       }
       setAuthLoading(false);
     });
@@ -86,7 +88,7 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // BLOQUEIO DE BUSCA PRÉ-LOGIN: Só busca se o Firebase Auth confirmar o usuário
+    // 2. BLOQUEIO DE BUSCA PRÉ-LOGIN
     if (!auth.currentUser || !currentUserProfile) return;
 
     const qOccurrences = query(collection(db, 'occurrences'), orderBy('timestamp', 'desc'));
@@ -143,10 +145,10 @@ const App: React.FC = () => {
   // SETUP INICIAL SE NÃO HOUVER ADMIN
   if (needsSetup) return <FirstAdminSetup onSetupComplete={() => setNeedsSetup(false)} />;
 
-  // AUTH GUARD: SE NÃO ESTIVER LOGADO, MOSTRA APENAS TELA DE LOGIN
+  // 3. TELA INICIAL: SE NÃO LOGADO, MOSTRA APENAS LOGIN
   if (!user || !currentUserProfile) return <LoginPage />;
 
-  // BLINDAGEM DE ARRAYS ANTES DE QUALQUER FILTRO OU MAP
+  // 4. SEGURANÇA DE ARRAY: Blindagem antes da renderização
   const safeOccs = (occurrences || []);
   const activeOccurrences = safeOccs.filter(occ => !occ.deletedAt);
   const deletedOccurrences = safeOccs.filter(occ => !!occ.deletedAt);
@@ -165,7 +167,7 @@ const App: React.FC = () => {
       />
       <main className="container mx-auto px-4 py-8">
         {activeView === 'dashboard' && <Dashboard occurrences={activeOccurrences} users={safeUsers} currentUser={currentUserProfile} onMoveToTrash={handleMoveToTrash} />}
-        {activeView === 'form' && <OccurrenceForm onAddOccurrence={async (d) => { /* internal logic handled in component props */ }} />}
+        {activeView === 'form' && <OccurrenceForm onAddOccurrence={async (d) => { /* logic */ }} />}
         {activeView === 'myTasks' && <MyTasks occurrences={activeOccurrences} currentUser={currentUserProfile} users={safeUsers} updateOccurrence={updateOccurrence} onMoveToTrash={handleMoveToTrash} />}
         {activeView === 'admin' && <AdminPanel users={safeUsers} currentUser={currentUserProfile} feedbacks={feedbacks || []} onInviteUser={async (d) => { /* logic */ }} />}
         {activeView === 'trash' && <TrashPanel occurrences={deletedOccurrences} onRestore={handleRestore} onDeleteForever={handleDeleteForever} />}
