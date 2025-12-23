@@ -3,9 +3,10 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-// Fix: Cast import.meta to any to resolve TS errors as 'env' is not natively defined on ImportMeta
+// Fix: Cast import.meta to any to resolve "Property 'env' does not exist on type 'ImportMeta'" errors
 const metaEnv = (import.meta as any).env || {};
 
+// Configuração estrita com variáveis de ambiente do Vite
 export const firebaseConfig = {
   apiKey: metaEnv.VITE_FIREBASE_API_KEY,
   authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN,
@@ -21,6 +22,6 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 
-// A chave da Gemini é consumida via variável VITE para consistência no build client-side
-// Também disponível via process.env.API_KEY conforme configurado no build process
+// Chave da Gemini para uso interno do sistema
+// Fix: Use the safely accessed metaEnv for Gemini API key
 export const GEMINI_API_KEY = metaEnv.VITE_API_KEY;
