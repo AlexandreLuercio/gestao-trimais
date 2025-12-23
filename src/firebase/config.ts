@@ -1,11 +1,9 @@
-
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-// Configuração literal estática para substituição pelo Vite no Netlify
-// Cast import.meta to any to resolve TS errors as 'env' is not natively defined on ImportMeta
+// Fix: Cast import.meta to any to resolve TS errors as 'env' is not natively defined on ImportMeta
 const metaEnv = (import.meta as any).env || {};
 
 export const firebaseConfig = {
@@ -23,5 +21,6 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 
-// Chave da Gemini obtida diretamente do ambiente conforme diretrizes do SDK
-export const GEMINI_API_KEY = (process as any).env?.API_KEY;
+// A chave da Gemini é consumida via variável VITE para consistência no build client-side
+// Também disponível via process.env.API_KEY conforme configurado no build process
+export const GEMINI_API_KEY = metaEnv.VITE_API_KEY;

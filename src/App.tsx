@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { Occurrence, User, Status, Area, Role, SystemFeedback, AppNotification } from './types';
-import { auth, db } from './config';
+import { auth, db } from './firebase/config';
 import { onAuthStateChanged } from 'firebase/auth';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { 
@@ -37,15 +37,11 @@ const App: React.FC = () => {
   const [currentUserProfile, setCurrentUserProfile] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   
-  // Inicialização SEGURA com arrays vazios
   const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [feedbacks, setFeedbacks] = useState<SystemFeedback[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   
   const [activeView, setActiveView] = useState<View>('dashboard');
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [newOccurrence, setNewOccurrence] = useState<Occurrence | null>(null);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [realRole, setRealRole] = useState<Role | null>(null);
@@ -76,7 +72,6 @@ const App: React.FC = () => {
       } else {
         setUser(null);
         setCurrentUserProfile(null);
-        setRealRole(null);
         setOccurrences([]);
         setUsers([]);
       }
@@ -86,7 +81,6 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // BLOQUEIO DE BUSCA PRÉ-LOGIN
     if (!auth.currentUser || !currentUserProfile) return;
 
     const qOccurrences = query(collection(db, 'occurrences'), orderBy('timestamp', 'desc'));
@@ -116,8 +110,6 @@ const App: React.FC = () => {
   );
 
   if (needsSetup) return <FirstAdminSetup onSetupComplete={() => setNeedsSetup(false)} />;
-
-  // AUTH GUARD OBRIGATÓRIO: Não renderiza nada sem login
   if (!user || !currentUserProfile) return <LoginPage />;
 
   const safeOccs = occurrences || [];
@@ -140,7 +132,7 @@ const App: React.FC = () => {
       />
       <main className="container mx-auto px-4 py-8">
         {activeView === 'dashboard' && <Dashboard occurrences={activeOccurrences} users={users} currentUser={currentUserProfile} />}
-        {activeView === 'form' && <OccurrenceForm onAddOccurrence={async (d) => { /* logic handled in component */ }} />}
+        {activeView === 'form' && <OccurrenceForm onAddOccurrence={async (d) => {}} />}
         {activeView === 'myTasks' && <MyTasks occurrences={activeOccurrences} currentUser={currentUserProfile} users={users} updateOccurrence={(id, u) => updateDoc(doc(db, 'occurrences', id), u)} />}
         {activeView === 'admin' && <AdminPanel users={users} currentUser={currentUserProfile} onInviteUser={async (d) => {}} />}
         {activeView === 'trash' && <TrashPanel occurrences={deletedOccurrences} onRestore={(id) => updateDoc(doc(db, 'occurrences', id), {deletedAt: null})} onDeleteForever={(id) => deleteDoc(doc(db, 'occurrences', id))} />}
