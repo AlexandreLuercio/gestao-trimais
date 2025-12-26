@@ -1,22 +1,9 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
-import { Occurrence, User, Status, Area, Role, SystemFeedback, AppNotification } from './types';
-import { auth, db } from './config';
-import { onAuthStateChanged } from 'firebase/auth';
-import type { User as FirebaseUser } from 'firebase/auth';
-import { 
-  collection, 
-  onSnapshot, 
-  doc, 
-  query, 
-  updateDoc, 
-  addDoc, 
-  deleteDoc, 
-  orderBy, 
-  getDoc, 
-  getDocs 
-} from 'firebase/firestore';
+import { supabase } from './lib/supabaseClient';
+import { Occurrence, User, Role, SystemFeedback, AppNotification } from './types';
 
+// Componentes
 import Header from './components/Header';
 import OccurrenceForm from './components/OccurrenceForm';
 import ShareModal from './components/ShareModal';
@@ -33,96 +20,112 @@ import FirstAdminSetup from './components/FirstAdminSetup';
 export type View = 'form' | 'dashboard' | 'myTasks' | 'admin' | 'team' | 'trash';
 
 const App: React.FC = () => {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [session, setSession] = useState<any>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   
-  // Inicialização SEGURA com arrays vazios
   const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [feedbacks, setFeedbacks] = useState<SystemFeedback[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   
   const [activeView, setActiveView] = useState<View>('dashboard');
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [newOccurrence, setNewOccurrence] = useState<Occurrence | null>(null);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [realRole, setRealRole] = useState<Role | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
   const [needsSetup, setNeedsSetup] = useState(false);
 
+  // 1. GERENCIAMENTO DE AUTENTICAÇÃO
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
-      setAuthLoading(true);
-      if (firebaseUser) {
-        try {
-          const userDocRef = doc(db, 'users', firebaseUser.uid);
-          const userDoc = await getDoc(userDocRef);
-          
-          if (userDoc.exists()) {
-            const profile = userDoc.data() as User;
-            setCurrentUserProfile(profile);
-            setRealRole(profile.role);
-            if (profile.status === 'Provisorio') setIsChangePasswordModalOpen(true);
-          } else {
-            const usersSnap = await getDocs(collection(db, 'users'));
-            if (usersSnap.empty) setNeedsSetup(true);
-          }
-          setUser(firebaseUser);
-        } catch (e) {
-          console.error("Erro ao carregar perfil:", e);
-        }
-      } else {
-        setUser(null);
-        setCurrentUserProfile(null);
-        setRealRole(null);
-        setOccurrences([]);
-        setUsers([]);
-      }
-      setAuthLoading(false);
+    // Verifica sessão inicial
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) fetchProfile(session.user.id);
+      else setAuthLoading(false);
     });
-    return () => unsubscribeAuth();
+
+    // Escuta mudanças na autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) fetchProfile(session.user.id);
+      else {
+        setCurrentUserProfile(null);
+        setAuthLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
+  const fetchProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error && error.code === 'PGRST116') {
+        // Se não encontrar perfil, verifica se o sistema precisa de setup inicial
+        const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+        if (count === 0) setNeedsSetup(true);
+      } else if (data) {
+        setCurrentUserProfile(data);
+        setRealRole(data.role);
+        if (data.status === 'Provisorio') setIsChangePasswordModalOpen(true);
+      }
+    } catch (e) {
+      console.error("Erro ao carregar perfil:", e);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // 2. CARREGAMENTO DE DADOS (OCORRÊNCIAS E USUÁRIOS)
   useEffect(() => {
-    // BLOQUEIO DE BUSCA PRÉ-LOGIN
-    if (!auth.currentUser || !currentUserProfile) return;
+    if (!session || !currentUserProfile) return;
 
-    const qOccurrences = query(collection(db, 'occurrences'), orderBy('timestamp', 'desc'));
-    const unsubscribeOccurrences = onSnapshot(qOccurrences, (snapshot) => {
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Occurrence)) || [];
-      setOccurrences(data);
-    }, (err) => {
-      console.error("Erro stream tarefas:", err);
-      setOccurrences([]);
-    });
-
-    const unsubscribeUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as User)) || [];
-      setUsers(data);
-    }, (err) => setUsers([]));
-
-    return () => { 
-      unsubscribeOccurrences(); 
-      unsubscribeUsers(); 
+    // Busca inicial de Ocorrências
+    const fetchOccurrences = async () => {
+      const { data } = await supabase
+        .from('occurrences')
+        .select('*')
+        .order('created_at', { ascending: false });
+      setOccurrences(data || []);
     };
-  }, [user, currentUserProfile]);
+
+    // Busca inicial de Usuários (Perfis)
+    const fetchUsers = async () => {
+      const { data } = await supabase.from('profiles').select('*');
+      setUsers(data || []);
+    };
+
+    fetchOccurrences();
+    fetchUsers();
+
+    // INSCRIÇÃO EM TEMPO REAL (Substitui o onSnapshot do Firebase)
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'occurrences' }, () => fetchOccurrences())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchUsers())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [session, currentUserProfile]);
 
   if (authLoading) return (
-    <div className="min-h-screen flex items-center justify-center bg-trimais-blue text-white font-bold">
+    <div className="min-h-screen flex items-center justify-center bg-[#003366] text-white font-bold">
       Iniciando Trimais Places...
     </div>
   );
 
   if (needsSetup) return <FirstAdminSetup onSetupComplete={() => setNeedsSetup(false)} />;
-
-  // AUTH GUARD OBRIGATÓRIO: Não renderiza nada sem login
-  if (!user || !currentUserProfile) return <LoginPage />;
+  if (!session || !currentUserProfile) return <LoginPage />;
 
   const safeOccs = occurrences || [];
-  const activeOccurrences = safeOccs.filter(occ => !occ.deletedAt);
-  const deletedOccurrences = safeOccs.filter(occ => !!occ.deletedAt);
+  const activeOccurrences = safeOccs.filter(occ => !occ.deleted_at);
+  const deletedOccurrences = safeOccs.filter(occ => !!occ.deleted_at);
 
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
@@ -140,12 +143,27 @@ const App: React.FC = () => {
       />
       <main className="container mx-auto px-4 py-8">
         {activeView === 'dashboard' && <Dashboard occurrences={activeOccurrences} users={users} currentUser={currentUserProfile} />}
-        {activeView === 'form' && <OccurrenceForm onAddOccurrence={async (d) => { /* logic handled in component */ }} />}
-        {activeView === 'myTasks' && <MyTasks occurrences={activeOccurrences} currentUser={currentUserProfile} users={users} updateOccurrence={(id, u) => updateDoc(doc(db, 'occurrences', id), u)} />}
-        {activeView === 'admin' && <AdminPanel users={users} currentUser={currentUserProfile} onInviteUser={async (d) => {}} />}
-        {activeView === 'trash' && <TrashPanel occurrences={deletedOccurrences} onRestore={(id) => updateDoc(doc(db, 'occurrences', id), {deletedAt: null})} onDeleteForever={(id) => deleteDoc(doc(db, 'occurrences', id))} />}
+        {activeView === 'form' && <OccurrenceForm onAddOccurrence={async () => {}} />}
+        {activeView === 'myTasks' && (
+          <MyTasks 
+            occurrences={activeOccurrences} 
+            currentUser={currentUserProfile} 
+            users={users} 
+            updateOccurrence={async (id, updates) => {
+              await supabase.from('occurrences').update(updates).eq('id', id);
+            }} 
+          />
+        )}
+        {activeView === 'admin' && <AdminPanel users={users} currentUser={currentUserProfile} onInviteUser={async () => {}} />}
+        {activeView === 'trash' && (
+          <TrashPanel 
+            occurrences={deletedOccurrences} 
+            onRestore={async (id) => await supabase.from('occurrences').update({deleted_at: null}).eq('id', id)} 
+            onDeleteForever={async (id) => await supabase.from('occurrences').delete().eq('id', id)} 
+          />
+        )}
       </main>
-      {isFeedbackModalOpen && <FeedbackModal isOpen={isFeedbackModalOpen} onClose={() => setIsFeedbackModalOpen(false)} onSubmit={async (t, c) => {}} />}
+      {isFeedbackModalOpen && <FeedbackModal isOpen={isFeedbackModalOpen} onClose={() => setIsFeedbackModalOpen(false)} onSubmit={async () => {}} />}
       {isChangePasswordModalOpen && <ChangePasswordModal isOpen={isChangePasswordModalOpen} onClose={() => setIsChangePasswordModalOpen(false)} user={currentUserProfile} isForced={currentUserProfile.status === 'Provisorio'} />}
     </div>
   );
