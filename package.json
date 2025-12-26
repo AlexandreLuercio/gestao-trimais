@@ -12,7 +12,6 @@
   "dependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "firebase": "^10.8.0",
     "@google/genai": "^1.31.0",
     "date-fns": "^4.1.0",
     "jspdf": "^3.0.4",
