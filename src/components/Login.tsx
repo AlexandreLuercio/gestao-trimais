@@ -1,79 +1,81 @@
 import React, { useState } from 'react';
-import { auth } from '../firebase/config';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { supabase } from '../lib/supabaseClient';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (err: any) {
-      console.error("Erro de Login:", err.code);
-      setError(`Erro: ${err.code}. Verifique se a Identity Toolkit API está ativa no Google Cloud.`);
-    }
+    setLoading(true);
+    setError(null);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setError(error.message);
+    setLoading(false);
   };
 
-  // FUNÇÃO MESTRE: Tenta criar um usuário de teste para validar a conexão
-  const handleSetupTest = async () => {
-    setStatus('Tentando criar usuário de teste...');
-    try {
-      await createUserWithEmailAndPassword(auth, 'teste@trimais.com.br', 'Teste123456!');
-      setStatus('Sucesso! Usuário teste@trimais.com.br criado. Tente logar agora.');
-    } catch (err: any) {
-      console.error("Erro no Setup:", err.code);
-      if (err.code === 'auth/email-already-in-use') {
-        setStatus('O usuário já existe. A conexão está funcionando! ✅');
+  const testConnection = async () => {
+    setStatus('Testando conexão...');
+    const { error } = await supabase.auth.signUp({
+      email: 'teste@trimais.com.br',
+      password: 'Teste123456!',
+    });
+    if (error) {
+      if (error.message.includes('already registered')) {
+        setStatus('Conexão OK! Usuário já existe. ✅');
       } else {
-        setStatus(`Falha Crítica: ${err.code}. O Google está bloqueando sua API Key (Erro 403).`);
+        setStatus(`Erro: ${error.message}`);
       }
+    } else {
+      setStatus('Sucesso! Usuário teste@trimais.com.br criado. ✅');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 p-10 bg-white rounded-xl shadow-2xl border border-gray-100">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-[#003366]">Gestão Trimais</h2>
-          <p className="mt-2 text-center text-sm text-gray-600">Acesse sua conta</p>
-        </div>
-        
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-          <div className="rounded-md shadow-sm -space-y-px">
-            <input
-              type="email"
-              required
-              className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-[#003366] focus:border-[#003366] sm:text-sm"
-              placeholder="E-mail"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <input
-              type="password"
-              required
-              className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-[#003366] focus:border-[#003366] sm:text-sm"
-              placeholder="Senha"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-
-          {error && <p className="text-red-500 text-xs mt-2 bg-red-50 p-2 rounded">{error}</p>}
-
-          <div>
-            <button
-              type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-[#003366] hover:bg-[#002244] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#003366]"
-            >
-              Entrar
-            </button>
-          </div>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="bg-white p-10 rounded-2xl shadow-2xl w-full max-w-md border border-gray-100">
+        <h2 className="text-3xl font-extrabold mb-8 text-center text-[#003366]">Gestão Trimais</h2>
+        <form onSubmit={handleLogin} className="space-y-4">
+          <input
+            type="email"
+            placeholder="E-mail"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] outline-none"
+            required
+          />
+          <input
+            type="password"
+            placeholder="Senha"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#003366] outline-none"
+            required
+          />
+          {error && <p className="text-red-500 text-xs bg-red-50 p-2 rounded">{error}</p>}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 rounded-lg font-bold text-white bg-[#003366] hover:bg-[#002244] transition-all disabled:opacity-50"
+          >
+            {loading ? 'Entrando...' : 'Entrar'}
+          </button>
         </form>
+        <div className="mt-8 pt-6 border-t border-gray-200">
+          <button
+            onClick={testConnection}
+            className="w-full py-2 border-2 border-[#d4af37] text-[#d4af37] font-bold rounded-lg hover:bg-yellow-50 transition-all text-sm"
+          >
+            TESTAR CONEXÃO SUPABASE
+          </button>
+          {status && <p className="text-[10px] text-center mt-2 font-mono text-gray-500">{status}</p>}
+        </div>
+      </div>
+    </div>
+  );
+};
 
-        <div className="mt-6 pt-6 border-t border-gray-200">
-          <p className="text-xs text-center text-gray-500 mb-4">Ferramenta de Diagnóstico:</p>
+export default App;
