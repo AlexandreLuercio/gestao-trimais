@@ -84,4 +84,35 @@ const Header: React.FC<HeaderProps> = ({
             </div>
 
             <div className="flex items-center gap-2 border-l border-blue-800 pl-4">
-              <button
+              <button 
+                onClick={onOpenFeedback}
+                className="p-2 hover:bg-[#002244] rounded-full transition-colors text-blue-200"
+                title="Feedback"
+              >
+                <MessageSquare size={20} />
+              </button>
+              
+              <button 
+                onClick={handleLogout}
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-3 py-2 rounded-lg text-sm font-bold transition-all shadow-md"
+              >
+                <LogOut size={18} />
+                <span className="hidden md:inline">Sair</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Alerta de Simulação de Admin */}
+      {isSimulating && (
+        <div className="bg-[#d4af37] text-[#003366] text-[10px] py-1 text-center font-bold uppercase tracking-widest">
+          Modo de Visualização: {currentUser.role} | 
+          <button onClick={() => onSimulateRole(null)} className="ml-2 underline">Voltar ao Real</button>
+        </div>
+      )}
+    </header>
+  );
+};
+
+export default Header;
