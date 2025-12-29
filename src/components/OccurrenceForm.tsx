@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import { Occurrence, Area } from '../types';
-import { GoogleGenAI } from '@google/genai';
 
 interface OccurrenceFormProps {
   onAddOccurrence: (occurrence: Omit<Occurrence, 'id' | 'timestamp' | 'status' | 'uniqueId' | 'createdBy' | 'creatorName' | 'updatesLog'>) => Promise<void>;
@@ -110,18 +109,42 @@ const OccurrenceForm: React.FC<OccurrenceFormProps> = ({ onAddOccurrence }) => {
     if (!audioBlob) return;
     setIsTranscribing(true);
     try {
-      // O SDK injeta process.env.API_KEY no contexto de execução do sistema
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      // Usando a API da Gemini diretamente, sem o SDK problemático
+      const GEMINI_API_KEY = (import.meta as any).env.VITE_GEMINI_API_KEY; // Acessando a chave do .env
+      
       const base64Audio = await blobToBase64(audioBlob);
-      const audioPart = { inlineData: { mimeType: audioBlob.type, data: base64Audio } };
-      const textPart = { text: "Transcreva este áudio em português do Brasil." };
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: { parts: [audioPart, textPart] },
+      
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: audioBlob.type,
+                    data: base64Audio,
+                  },
+                },
+                {
+                  text: "Transcreva este áudio em português do Brasil, apenas o texto falado.",
+                },
+              ],
+            },
+          ],
+        }),
       });
-      setDescription(prev => prev ? `${prev}\n\n[Transcrição]: ${response.text}` : `[Transcrição]: ${response.text}`);
+
+      const data = await response.json();
+      const transcribedText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      setDescription(prev => prev ? `${prev}\n\n[Transcrição]: ${transcribedText}` : `[Transcrição]: ${transcribedText}`);
+
     } catch (error) {
       console.error("Erro na transcrição:", error);
+      alert("Erro ao transcrever áudio. Verifique sua chave Gemini e conexão.");
     } finally {
       setIsTranscribing(false);
     }
@@ -145,7 +168,7 @@ const OccurrenceForm: React.FC<OccurrenceFormProps> = ({ onAddOccurrence }) => {
 
   return (
     <div className="bg-white rounded-lg shadow-2xl p-6 md:p-8 w-full max-w-3xl mx-auto">
-      <h3 className="text-2xl font-bold text-trimais-blue mb-6 text-center">Nova Tarefa</h3>
+      <h3 className="text-2xl font-bold text-[#003366] mb-6 text-center">Nova Tarefa</h3>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex items-center justify-between bg-red-50 p-3 rounded-md border border-red-200">
             <span className="text-red-700 font-bold flex items-center gap-2">⚠️ Urgente</span>
@@ -164,7 +187,6 @@ const OccurrenceForm: React.FC<OccurrenceFormProps> = ({ onAddOccurrence }) => {
         <div>
           <label className="block text-sm font-medium text-gray-700">Área Responsável*</label>
           <select value={area} onChange={(e) => setArea(e.target.value as Area)} className="mt-1 block w-full px-3 py-2 border rounded-md">
-            {/* Fix: Cast Object.values to string[] to resolve TypeScript 'unknown' type assignment issues */}
             {(Object.values(Area) as string[]).map(a => <option key={a} value={a}>{a}</option>)}
           </select>
         </div>
@@ -175,12 +197,14 @@ const OccurrenceForm: React.FC<OccurrenceFormProps> = ({ onAddOccurrence }) => {
         <div>
           <label className="block text-sm font-medium text-gray-700">Áudio (opcional)</label>
           <div className="mt-2 p-4 border-2 border-dashed rounded-md text-center">
-            {!isRecording && !audioURL && <button type="button" onClick={startRecording} className="bg-trimais-blue text-white px-4 py-2 rounded-md">Gravar</button>}
+            {!isRecording && !audioURL && <button type="button" onClick={startRecording} className="bg-[#003366] text-white px-4 py-2 rounded-md">Gravar</button>}
             {isRecording && <button type="button" onClick={stopRecording} className="bg-red-600 text-white px-4 py-2 rounded-md animate-pulse">Parar</button>}
             {audioURL && !isRecording && (
               <div className="space-y-2">
                 <audio src={audioURL} controls className="w-full" />
-                <button type="button" onClick={handleTranscribe} className="text-sm bg-trimais-gold text-white px-3 py-1 rounded">Transcrever</button>
+                <button type="button" onClick={handleTranscribe} disabled={isTranscribing} className="text-sm bg-[#d4af37] text-white px-3 py-1 rounded">
+                  {isTranscribing ? 'Transcrevendo...' : 'Transcrever'}
+                </button>
               </div>
             )}
           </div>
@@ -197,7 +221,7 @@ const OccurrenceForm: React.FC<OccurrenceFormProps> = ({ onAddOccurrence }) => {
             ))}
           </div>
         </div>
-        <button type="submit" disabled={isSubmitting} className="w-full bg-trimais-blue text-white py-3 rounded-md font-bold">
+        <button type="submit" disabled={isSubmitting} className="w-full bg-[#003366] text-white py-3 rounded-md font-bold">
             {isSubmitting ? 'Enviando...' : 'Relatar Tarefa'}
         </button>
       </form>
