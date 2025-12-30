@@ -3,7 +3,7 @@ import { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabaseClient';
 import Login from './components/Login';
 import Header from './components/Header';
-import OccurrenceForm from './components/OccurrenceForm'; // DESCOMENTAR
+import OccurrenceForm from './components/OccurrenceForm';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -14,7 +14,7 @@ const App: React.FC = () => {
     // Verifica a sessão atual ao abrir o app
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) checkAdminStatus(session.user.id); // DESCOMENTAR
+      if (session) checkAdminStatus(session.user.id);
       setLoading(false);
     });
 
@@ -22,7 +22,7 @@ const App: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       if (session) {
-        await checkAdminStatus(session.user.id); // DESCOMENTAR
+        await checkAdminStatus(session.user.id);
       } else {
         setIsAdmin(false);
       }
@@ -32,15 +32,25 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // DESCOMENTAR toda a função checkAdminStatus
   const checkAdminStatus = async (userId: string) => {
+    console.log("Iniciando checkAdminStatus para userId:", userId); // Log para saber que a função começou
     const { data, error } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', userId)
       .single();
+
+    console.log("Resposta do Supabase - data:", data); // Log do que veio em 'data'
+    console.log("Resposta do Supabase - error:", error); // Log do que veio em 'error'
+
+    if (error) {
+      console.error("Erro ao buscar perfil:", error.message); // Se houver erro, mostre a mensagem
+      setIsAdmin(false);
+      return; // Importante: sair da função se houver erro
+    }
     
-    if (!error && data?.role === 'admin') {
+    // Agora, verificamos 'data' antes de tentar acessar 'role'
+    if (data && data.role === 'admin') { // Mudança aqui: 'data &&'
       setIsAdmin(true);
     } else {
       setIsAdmin(false);
@@ -59,16 +69,15 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <Header isAdmin={isAdmin} /> {/* DESCOMENTAR */}
+      <Header isAdmin={isAdmin} />
       <main className="max-w-7xl mx-auto py-6 px-4">
         {isAdmin && (
           <div className="bg-[#003366] text-white text-center py-2 rounded-lg mb-6 font-bold shadow-md">
             PAINEL DO ADMINISTRADOR ATIVO
           </div>
-        )} {/* DESCOMENTAR este bloco */}
+        )}
         <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-200">
-          <OccurrenceForm /> {/* DESCOMENTAR */}
-          {/* <p>Bem-vindo! Login efetuado com sucesso. (Conteúdo temporário)</p> */} {/* EXCLUIR ou COMENTAR esta linha */}
+          <OccurrenceForm />
         </div>
       </main>
     </div>
