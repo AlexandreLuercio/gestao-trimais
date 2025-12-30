@@ -3,7 +3,7 @@ import { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabaseClient';
 import Login from './components/Login';
 import Header from './components/Header';
-// import OccurrenceForm from './components/OccurrenceForm'; // Comente esta linha
+import OccurrenceForm from './components/OccurrenceForm'; // DESCOMENTAR
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -14,7 +14,7 @@ const App: React.FC = () => {
     // Verifica a sessão atual ao abrir o app
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      // if (session) checkAdminStatus(session.user.id); // Comente esta linha
+      if (session) checkAdminStatus(session.user.id); // DESCOMENTAR
       setLoading(false);
     });
 
@@ -22,7 +22,7 @@ const App: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       if (session) {
-        // await checkAdminStatus(session.user.id); // Comente esta linha
+        await checkAdminStatus(session.user.id); // DESCOMENTAR
       } else {
         setIsAdmin(false);
       }
@@ -32,20 +32,20 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Comente toda a função checkAdminStatus temporariamente
-  // const checkAdminStatus = async (userId: string) => {
-  //   const { data, error } = await supabase
-  //     .from('profiles')
-  //     .select('role')
-  //     .eq('id', userId)
-  //     .single();
+  // DESCOMENTAR toda a função checkAdminStatus
+  const checkAdminStatus = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single();
     
-  //   if (!error && data?.role === 'admin') {
-  //     setIsAdmin(true);
-  //   } else {
-  //     setIsAdmin(false);
-  //   }
-  // };
+    if (!error && data?.role === 'admin') {
+      setIsAdmin(true);
+    } else {
+      setIsAdmin(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -59,16 +59,16 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* <Header isAdmin={isAdmin} /> */} {/* Comente esta linha */}
+      <Header isAdmin={isAdmin} /> {/* DESCOMENTAR */}
       <main className="max-w-7xl mx-auto py-6 px-4">
-        {/* {isAdmin && (
+        {isAdmin && (
           <div className="bg-[#003366] text-white text-center py-2 rounded-lg mb-6 font-bold shadow-md">
             PAINEL DO ADMINISTRADOR ATIVO
           </div>
-        )} */} {/* Comente este bloco */}
+        )} {/* DESCOMENTAR este bloco */}
         <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-200">
-          {/* <OccurrenceForm /> */} {/* Comente esta linha */}
-          <p>Bem-vindo! Login efetuado com sucesso. (Conteúdo temporário)</p>
+          <OccurrenceForm /> {/* DESCOMENTAR */}
+          {/* <p>Bem-vindo! Login efetuado com sucesso. (Conteúdo temporário)</p> */} {/* EXCLUIR ou COMENTAR esta linha */}
         </div>
       </main>
     </div>
