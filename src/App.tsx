@@ -14,7 +14,13 @@ const App: React.FC = () => {
     // Verifica a sessão atual ao abrir o app
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) checkAdminStatus(session.user.id);
+      if (session) {
+        console.log("DEBUG: getSession - Session user ID:", session.user.id); // NOVO LOG
+        checkAdminStatus(session.user.id);
+      }
+      setLoading(false);
+    }).catch(err => { // NOVO CATCH para getSession
+      console.error("DEBUG: Erro em getSession:", err);
       setLoading(false);
     });
 
@@ -22,6 +28,7 @@ const App: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       if (session) {
+        console.log("DEBUG: onAuthStateChange - Session user ID:", session.user.id); // NOVO LOG
         await checkAdminStatus(session.user.id);
       } else {
         setIsAdmin(false);
@@ -33,27 +40,34 @@ const App: React.FC = () => {
   }, []);
 
   const checkAdminStatus = async (userId: string) => {
-    console.log("Iniciando checkAdminStatus para userId:", userId); // Log para saber que a função começou
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', userId)
-      .single();
+    console.log("DEBUG: checkAdminStatus iniciado para userId:", userId); // Log para saber que a função começou
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
 
-    console.log("Resposta do Supabase - data:", data); // Log do que veio em 'data'
-    console.log("Resposta do Supabase - error:", error); // Log do que veio em 'error'
+      console.log("DEBUG: Resposta do Supabase - data:", data); // Log do que veio em 'data'
+      console.log("DEBUG: Resposta do Supabase - error:", error); // Log do que veio em 'error'
 
-    if (error) {
-      console.error("Erro ao buscar perfil:", error.message); // Se houver erro, mostre a mensagem
+      if (error) {
+        console.error("DEBUG: Erro ao buscar perfil no Supabase:", error.message); // Se houver erro, mostre a mensagem
+        setIsAdmin(false);
+        return; // Importante: sair da função se houver erro
+      }
+      
+      // Verificação mais robusta para 'data' e 'role'
+      if (data && typeof data === 'object' && 'role' in data && data.role === 'admin') {
+        setIsAdmin(true);
+      } else {
+        setIsAdmin(false);
+      }
+    } catch (e: any) {
+      console.error("DEBUG: UM ERRO INESPERADO OCORREU em checkAdminStatus:", e);
       setIsAdmin(false);
-      return; // Importante: sair da função se houver erro
-    }
-    
-    // Agora, verificamos 'data' antes de tentar acessar 'role'
-    if (data && data.role === 'admin') { // Mudança aqui: 'data &&'
-      setIsAdmin(true);
-    } else {
-      setIsAdmin(false);
+      // Re-throw para garantir que o erro apareça no console principal
+      throw e; 
     }
   };
 
