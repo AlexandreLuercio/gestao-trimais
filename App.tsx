@@ -1,170 +1,138 @@
-// @ts-nocheck
-import React, { useState, useEffect } from 'react';
+// src/App.tsx
+import React, { useEffect, useState } from 'react';
+import { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabaseClient';
-import { Occurrence, User, Role, SystemFeedback, AppNotification } from './types';
-
-// Componentes
+import Login from './components/Login';
 import Header from './components/Header';
 import OccurrenceForm from './components/OccurrenceForm';
-import ShareModal from './components/ShareModal';
-import Dashboard from './components/Dashboard';
-import MyTasks from './components/MyTasks';
-import AdminPanel from './components/AdminPanel';
-import LoginPage from './components/LoginPage';
-import RegistrationPage from './components/RegistrationPage';
-import TrashPanel from './components/TrashPanel';
-import FeedbackModal from './components/FeedbackModal';
-import ChangePasswordModal from './components/ChangePasswordModal';
-import FirstAdminSetup from './components/FirstAdminSetup';
 
-export type View = 'form' | 'dashboard' | 'myTasks' | 'admin' | 'team' | 'trash';
+// --- DEFINIÇÕES DE TIPOS (Se não estiverem em types.ts, coloque-as aqui temporariamente) ---
+// Certifique-se de que estes tipos correspondem ao que o Header.tsx espera
+export type Role = 'admin' | 'user' | 'manager'; // Adicione outros papéis se aplicável
+export interface AppUser { // Renomeado para AppUser para evitar conflito com o tipo User do Supabase
+  id: string;
+  email: string | undefined;
+  role: Role;
+}
+export interface AppNotification {
+  id: string;
+  message: string;
+  read: boolean;
+  timestamp: string;
+}
+export type View = 'dashboard' | 'form' | 'myTasks' | 'admin' | 'trash'; // Adicione outras views se aplicável
+// --- FIM DEFINIÇÕES DE TIPOS ---
+
 
 const App: React.FC = () => {
-  const [session, setSession] = useState<any>(null);
-  const [currentUserProfile, setCurrentUserProfile] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  
-  const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [feedbacks, setFeedbacks] = useState<SystemFeedback[]>([]);
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  
-  const [activeView, setActiveView] = useState<View>('dashboard');
-  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
-  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
-  const [realRole, setRealRole] = useState<Role | null>(null);
-  const [isSimulating, setIsSimulating] = useState(false);
-  const [needsSetup, setNeedsSetup] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [appUser, setAppUser] = useState<AppUser | null>(null); // NOVO ESTADO: Objeto de usuário completo
+  const [activeView, setActiveView] = useState<View>('dashboard'); // NOVO ESTADO: Para gerenciar a view ativa no Header
 
-  // 1. GERENCIAMENTO DE AUTENTICAÇÃO
   useEffect(() => {
-    // Verifica sessão inicial
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) fetchProfile(session.user.id);
-      else setAuthLoading(false);
-    });
+    const fetchSessionAndProfile = async (currentSession: Session | null) => {
+      setLoading(true); // Inicia carregamento
+      try {
+        if (currentSession) {
+          console.log("DEBUG: fetchSessionAndProfile - Session user ID:", currentSession.user.id);
+          
+          // Busca o papel (role) do usuário na tabela 'profiles'
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', currentSession.user.id)
+            .single();
 
-    // Escuta mudanças na autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) fetchProfile(session.user.id);
-      else {
-        setCurrentUserProfile(null);
-        setAuthLoading(false);
+          if (!error && data?.role) {
+            // Se encontrou o papel, cria o objeto appUser
+            setAppUser({
+              id: currentSession.user.id,
+              email: currentSession.user.email,
+              role: data.role as Role // Converte para o tipo Role
+            });
+          } else {
+            // Se não encontrou o papel ou houve erro, define um papel padrão
+            console.warn("DEBUG: Perfil não encontrado ou sem papel para o usuário:", currentSession.user.id, error);
+            setAppUser({
+              id: currentSession.user.id,
+              email: currentSession.user.email,
+              role: 'user' // Papel padrão, por exemplo
+            });
+          }
+        } else {
+          setAppUser(null); // Limpa o appUser se não houver sessão
+        }
+      } catch (err: any) {
+        console.error("DEBUG: Erro em fetchSessionAndProfile:", err);
+        setAppUser(null); // Limpa o appUser em caso de erro
+      } finally {
+        setLoading(false); // Finaliza carregamento
       }
+    };
+
+    // 1. Verificação inicial da sessão ao carregar o aplicativo
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      setSession(initialSession);
+      fetchSessionAndProfile(initialSession); // Busca o perfil com a sessão inicial
+    }).catch(err => {
+      console.error("DEBUG: Erro em getSession inicial:", err);
+      setLoading(false);
     });
 
+    // 2. Escuta por mudanças no estado de autenticação (login/logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      setSession(newSession);
+      console.log("DEBUG: onAuthStateChange - Event:", _event, "New Session:", newSession);
+      fetchSessionAndProfile(newSession); // Busca o perfil novamente em caso de mudança de sessão
+    });
+
+    // Limpa a inscrição ao desmontar o componente
     return () => subscription.unsubscribe();
-  }, []);
+  }, []); // Array de dependências vazio: este efeito roda apenas uma vez ao montar
 
-  const fetchProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+  // Estado derivado: isAdmin é true se o papel do appUser for 'admin'
+  const isAdmin = appUser?.role === 'admin';
 
-      if (error && error.code === 'PGRST116') {
-        // Se não encontrar perfil, verifica se o sistema precisa de setup inicial
-        const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
-        if (count === 0) setNeedsSetup(true);
-      } else if (data) {
-        setCurrentUserProfile(data);
-        setRealRole(data.role);
-        if (data.status === 'Provisorio') setIsChangePasswordModalOpen(true);
-      }
-    } catch (e) {
-      console.error("Erro ao carregar perfil:", e);
-    } finally {
-      setAuthLoading(false);
-    }
-  };
+  // --- Lógica de Renderização ---
 
-  // 2. CARREGAMENTO DE DADOS (OCORRÊNCIAS E USUÁRIOS)
-  useEffect(() => {
-    if (!session || !currentUserProfile) return;
+  // Mostra spinner enquanto carrega
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen bg-gray-100">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#003366]"></div>
+      </div>
+    );
+  }
 
-    // Busca inicial de Ocorrências
-    const fetchOccurrences = async () => {
-      const { data } = await supabase
-        .from('occurrences')
-        .select('*')
-        .order('created_at', { ascending: false });
-      setOccurrences(data || []);
-    };
+  // Se não há sessão ou o appUser ainda não foi carregado (e não está mais carregando), mostra a tela de Login
+  if (!session || !appUser) return <Login />;
 
-    // Busca inicial de Usuários (Perfis)
-    const fetchUsers = async () => {
-      const { data } = await supabase.from('profiles').select('*');
-      setUsers(data || []);
-    };
-
-    fetchOccurrences();
-    fetchUsers();
-
-    // INSCRIÇÃO EM TEMPO REAL (Substitui o onSnapshot do Firebase)
-    const channel = supabase
-      .channel('schema-db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'occurrences' }, () => fetchOccurrences())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchUsers())
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [session, currentUserProfile]);
-
-  if (authLoading) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#003366] text-white font-bold">
-      Iniciando Trimais Places...
-    </div>
-  );
-
-  if (needsSetup) return <FirstAdminSetup onSetupComplete={() => setNeedsSetup(false)} />;
-  if (!session || !currentUserProfile) return <LoginPage />;
-
-  const safeOccs = occurrences || [];
-  const activeOccurrences = safeOccs.filter(occ => !occ.deleted_at);
-  const deletedOccurrences = safeOccs.filter(occ => !!occ.deleted_at);
-
+  // Se chegamos aqui, significa que há uma sessão e o appUser foi carregado
   return (
-    <div className="min-h-screen bg-gray-100 pb-20">
+    <div className="min-h-screen bg-gray-100">
       <Header 
-        activeView={activeView} setActiveView={setActiveView} 
-        currentUser={currentUserProfile} notifications={notifications}
-        realRole={realRole || currentUserProfile.role} 
-        onSimulateRole={(role) => {
-            if (role === null) { setCurrentUserProfile({...currentUserProfile, role: realRole}); setIsSimulating(false); }
-            else { setCurrentUserProfile({...currentUserProfile, role}); setIsSimulating(true); }
-        }}
-        isSimulating={isSimulating} onOpenFeedback={() => setIsFeedbackModalOpen(true)}
-        onChangePassword={() => setIsChangePasswordModalOpen(true)}
-        onMarkNotificationsRead={() => {}}
+        activeView={activeView}
+        setActiveView={setActiveView}
+        currentUser={appUser} // AGORA PASSAMOS O OBJETO appUser COMPLETO
+        notifications={[]} // Placeholder: Você precisará gerenciar este estado em App.tsx
+        realRole={appUser.role} // O papel real do perfil do usuário
+        onSimulateRole={() => console.log("Simulate Role clicked")} // Placeholder
+        isSimulating={false} // Placeholder: Você precisará gerenciar este estado em App.tsx
+        onOpenFeedback={() => console.log("Open Feedback clicked")} // Placeholder
+        onChangePassword={() => console.log("Change Password clicked")} // Placeholder
+        onMarkNotificationsRead={() => console.log("Mark Notifications Read clicked")} // Placeholder
       />
-      <main className="container mx-auto px-4 py-8">
-        {activeView === 'dashboard' && <Dashboard occurrences={activeOccurrences} users={users} currentUser={currentUserProfile} />}
-        {activeView === 'form' && <OccurrenceForm onAddOccurrence={async () => {}} />}
-        {activeView === 'myTasks' && (
-          <MyTasks 
-            occurrences={activeOccurrences} 
-            currentUser={currentUserProfile} 
-            users={users} 
-            updateOccurrence={async (id, updates) => {
-              await supabase.from('occurrences').update(updates).eq('id', id);
-            }} 
-          />
+      <main className="max-w-7xl mx-auto py-6 px-4">
+        {isAdmin && (
+          <div className="bg-[#003366] text-white text-center py-2 rounded-lg mb-6 font-bold shadow-md">
+            PAINEL DO ADMINISTRADOR ATIVO
+          </div>
         )}
-        {activeView === 'admin' && <AdminPanel users={users} currentUser={currentUserProfile} onInviteUser={async () => {}} />}
-        {activeView === 'trash' && (
-          <TrashPanel 
-            occurrences={deletedOccurrences} 
-            onRestore={async (id) => await supabase.from('occurrences').update({deleted_at: null}).eq('id', id)} 
-            onDeleteForever={async (id) => await supabase.from('occurrences').delete().eq('id', id)} 
-          />
-        )}
+        <div className="bg-white shadow-xl rounded-xl p-6 border border-gray-200">
+          <OccurrenceForm />
+        </div>
       </main>
-      {isFeedbackModalOpen && <FeedbackModal isOpen={isFeedbackModalOpen} onClose={() => setIsFeedbackModalOpen(false)} onSubmit={async () => {}} />}
-      {isChangePasswordModalOpen && <ChangePasswordModal isOpen={isChangePasswordModalOpen} onClose={() => setIsChangePasswordModalOpen(false)} user={currentUserProfile} isForced={currentUserProfile.status === 'Provisorio'} />}
     </div>
   );
 };
